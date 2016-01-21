@@ -6,12 +6,12 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>6ebfde55-9687-40a9-8c1a-6e204ecb117f</ProjectGuid>
+    <ProjectGuid>{ba69ba28-7bc8-4bf6-bdb7-776f7f56825f}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>FSharp.Charting</RootNamespace>
-    <AssemblyName>FSharp.Charting</AssemblyName>
+    <RootNamespace>FSharp.Charting.Wpf</RootNamespace>
+    <AssemblyName>FSharp.Charting.Wpf</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <Name>FSharp.Charting</Name>
+    <Name>FSharp.Charting.Wpf</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -22,13 +22,14 @@
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Debug\FSharp.Charting.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\FSharp.Charting.Wpf.xml</DocumentationFile>
     <StartAction>Project</StartAction>
     <StartProgram>
     </StartProgram>
     <StartArguments>
     </StartArguments>
     <OtherFlags>--warnon:1182</OtherFlags>
+    <NoWarn>40</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -37,27 +38,28 @@
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>bin\Release\FSharp.Charting.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\FSharp.Charting.Wpf.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="FSharp.Charting.fs" />
-    <Compile Include="AssemblyInfo.fs" />
-    <None Include="FSharp.Charting.fsx">
+    <Compile Include="FSharp.Charting.Wpf.fs" />
+    <None Include="FSharp.Charting.Wpf.fsx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Compile Include="AssemblyInfo.fs" />
+    <None Include="What%27sUpWithGelsInTheFridge.fsx" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=4.3.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
     </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml" />
     <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Drawing" />
-    <Reference Include="System.Windows.Forms" />
-    <Reference Include="System.Windows.Forms.DataVisualization" />
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -75,14 +77,20 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" Condition="Exists('$(FSharpTargetsPath)')" />
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <Target Name="AfterBuild">
     <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName)$(TargetExt)" DestinationFolder="$(SolutionDir)bin\v40" />
-    <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName).pdb" DestinationFolder="$(SolutionDir)bin\v40" />
+    <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName).pdb" DestinationFolder="$(SolutionDir)bin\v40" Condition="Exists('$(ProjectDir)$(OutDir)$(TargetName).pdb')" />
+    <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName).mdb" DestinationFolder="$(SolutionDir)bin\v40" Condition="Exists('$(ProjectDir)$(OutDir)$(TargetName).mdb')" />
     <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName).xml" DestinationFolder="$(SolutionDir)bin\v40" />
     <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName)$(TargetExt)" DestinationFolder="$(SolutionDir)bin" />
-    <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName).pdb" DestinationFolder="$(SolutionDir)bin" />
+    <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName).pdb" DestinationFolder="$(SolutionDir)bin" Condition="Exists('$(ProjectDir)$(OutDir)$(TargetName).pdb')" />
+    <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName).mdb" DestinationFolder="$(SolutionDir)bin" Condition="Exists('$(ProjectDir)$(OutDir)$(TargetName).mdb')" />
     <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName).xml" DestinationFolder="$(SolutionDir)bin" />
     <Copy SourceFiles="$(ProjectDir)$(OutDir)$(TargetName).fsx" DestinationFolder="$(SolutionDir)bin" />
+    <Copy SourceFiles="$(ProjectDir)$(OutDir)OxyPlot.dll" DestinationFolder="$(SolutionDir)bin" />
+    <Copy SourceFiles="$(ProjectDir)$(OutDir)OxyPlot.Wpf.dll" DestinationFolder="$(SolutionDir)bin" />
+    <Copy SourceFiles="$(ProjectDir)\..\LICENSE.md" DestinationFolder="$(SolutionDir)bin" />
   </Target>
   <Import Project="..\.paket\paket.targets" />
   <Choose>
@@ -99,8 +107,8 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.0' Or $(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1')">
       <ItemGroup>
-        <Reference Include="OxyPlot.GtkSharp">
-          <HintPath>..\packages\OxyPlot.GtkSharp\lib\net40\OxyPlot.GtkSharp.dll</HintPath>
+        <Reference Include="OxyPlot.Wpf">
+          <HintPath>..\packages\OxyPlot.Wpf\lib\net40\OxyPlot.Wpf.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

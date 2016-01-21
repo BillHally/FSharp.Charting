@@ -4,6 +4,7 @@ nuget FSharp.Formatting
 nuget NUnit
 nuget NUnit.Runners 
 nuget OxyPlot.GtkSharp 2014.1.546
+nuget OxyPlot.Wpf 2014.1.546
 nuget OxyPlot.Core 2014.1.546
 nuget Nuget.CommandLine
 nuget FAKE

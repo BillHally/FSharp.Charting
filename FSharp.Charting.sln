@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{35EEF783-8EF0-4A55-B13B-7EEC6B2D1BA3}"
 	ProjectSection(SolutionItems) = preProject
@@ -50,6 +50,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{77EFC808
 		docs\tools\templates\template.cshtml = docs\tools\templates\template.cshtml
 	EndProjectSection
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Charting.Wpf", "src\FSharp.Charting.Wpf.fsproj", "{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -64,6 +66,10 @@ Global
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
