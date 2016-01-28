@@ -8,11 +8,13 @@ namespace FSharp.Charting
     open System.Collections.ObjectModel
     open System.Reflection
     open System.Runtime.InteropServices
+    open System.Windows.Input
     open OxyPlot
     open OxyPlot.Series
     open System.Windows
     open System.Windows.Controls
 
+    type PlotView = OxyPlot.Wpf.PlotView
     type FontStyle = float
 
     type Position =
@@ -1807,89 +1809,202 @@ namespace FSharp.Charting
         static member private GetOptionalWidth  width  = defaultArg width  700
         static member private GetOptionalHeight height = defaultArg height 500
 
+        static member private ShowHelp window =
+            let helpWindow = Window(Title = "FSharp Charting Help", ShowInTaskbar = false, Owner = window, SizeToContent = SizeToContent.WidthAndHeight)
+            helpWindow.WindowStartupLocation <- WindowStartupLocation.CenterOwner
+
+            helpWindow.Content <-
+                let contents = Grid(Margin=Thickness(20.0))
+                contents.ColumnDefinitions.Add(ColumnDefinition())
+                contents.ColumnDefinitions.Add(ColumnDefinition())
+                contents.ShowGridLines <- true
+
+                let add shortcuts explanation =
+
+                    let row = contents.RowDefinitions.Count
+                    let shortcuts = (TextBlock(FontSize=15.0, Text = shortcuts, HorizontalAlignment = HorizontalAlignment.Right, FontWeight = FontWeights.Bold, Margin=Thickness(10.0)))
+                    let explanation = (TextBlock(FontSize=15.0, Text = explanation, Margin=Thickness(10.0)))
+
+                    Grid.SetRow(shortcuts, row)
+                    Grid.SetRow(explanation, row)
+
+                    Grid.SetColumn(shortcuts, 0)
+                    Grid.SetColumn(explanation, 1)
+
+                    contents.Children.Add shortcuts |> ignore
+                    contents.Children.Add explanation |> ignore
+
+                    contents.RowDefinitions.Add (RowDefinition())
+
+                add "'A' or Home"                                          "Reset axes"
+                add "Right mouse button"                                   "Drag plot"
+                add "Left mouse button"                                    "Track points in a series"
+                add "Mouse wheel forwards / backwards"                     "Zoom in / out"
+                add "Mouse wheel, plus Ctrl"                               "Zoom with fine control"
+                add "Add or PageUp, Subtract or PageDown"                  "Zoom in / out"
+                add "Add or PageUp, Subtract or PageDown, plus Ctrl"       "Zoom with fine control"
+                add "Middle mouse button or Right mouse button, plus Ctrl" "Zoom rectangle"
+                add "Ctrl + Left"                                          "Previous chart"
+                add "Ctrl + Right"                                          "Next chart"
+                add "Ctrl + Alt + Left"                                    "First chart"
+                add "Ctrl + Alt + Right"                                   "Last chart"
+                add "'Z'"                                                  "Toggle origin (changes what \"Reset axes\" resets to)"
+                contents
+
+            helpWindow.ShowDialog() |> ignore
+
         static member Combine charts = GenericChart.Combine charts
 
-        /// Display the chart in a new WPF window
-        static member Show (?IsMaximized : bool) =
+        /// Display the charts in a new WPF window
+        static member ShowAll (?IsMaximized : bool, ?IsModal : bool) =
 
-            let isMaximized = defaultArg IsMaximized false
+            let windowState = if defaultArg IsMaximized false then WindowState.Maximized else WindowState.Normal
+            let isModal = defaultArg IsModal true
 
-            fun (ch : #GenericChart) ->
+            let toPlotView (ch : #GenericChart) = PlotView(Model = ch.Model)
 
-                let width =
-                    if isMaximized then
-                        System.Windows.SystemParameters.FullPrimaryScreenWidth - 100.0
-                    else
-                        Chart.GetOptionalWidth ch.Width |> float
+            fun (charts : #seq<#GenericChart>) ->
 
-                let height =
-                    if isMaximized then
-                        System.Windows.SystemParameters.FullPrimaryScreenHeight - 100.0
-                    else
-                        Chart.GetOptionalHeight ch.Height |> float
+                let charts = Array.ofSeq charts
 
-                let window = Window(Width = width + 100.0, Height = height + 100.0)
+                let width  = System.Windows.SystemParameters.FullPrimaryScreenWidth  / 2.0
+                let height = System.Windows.SystemParameters.FullPrimaryScreenHeight / 2.0
+
+                let plots = charts |> Array.map toPlotView
+
+                let axisMinimums = Dictionary<PlotView, _ []>() // Can't use F# Map because PlotView, GenericChart etc. don't implement IComparable
+                
+                plots |> Array.iter (fun x -> axisMinimums.[x] <- x.Model.Axes |> Seq.map (fun a -> a.Minimum) |> Array.ofSeq)
+
+                let getPlot n =
+                    match n with
+                    | n when n < 0 -> 0
+                    | n when n >= plots.Length -> plots.Length - 1
+                    | n -> n
+                    |> (
+                        function
+                        | n when n >= 0 && n < plots.Length -> Some plots.[n]
+                        | _ -> None
+                       )
+
+                let getCurrentPlotIndex, decrementPlotIndex, incrementPlotIndex, setFirstPlotIndex, setLastPlotIndex =
+                    let index = ref 0
+
+                    (fun () -> !index),
+                    (fun () -> if !index > 0 then decr index),
+                    (fun () -> if !index < plots.Length - 1 then incr index),
+                    (fun () -> index := 0),
+                    (fun () -> index := plots.Length - 1)
+
+                let window = Window(Width = width, Height = height, WindowState = windowState)
 
                 window.Content <-
-                    let grid = Grid()
-                    ignore <| grid.Children.Add (new OxyPlot.Wpf.PlotView(Height = height, Width = width, Model = ch.Model))
-                    grid
+                    let contents = StackPanel()
 
-                if isMaximized then
-                    window.WindowState <- WindowState.Maximized
+                    let buttons = StackPanel(Orientation=Orientation.Horizontal)
 
-                ignore <| window.ShowDialog()
+                    let decrementButton = Button(Content="<", FontSize = 15.0, FontWeight = FontWeights.Bold, Width=50.0, Height=30.0, VerticalContentAlignment=VerticalAlignment.Center, Margin=Thickness(10.0))
+                    let incrementButton = Button(Content=">", FontSize = 15.0, FontWeight = FontWeights.Bold, Width=50.0, Height=30.0, VerticalContentAlignment=VerticalAlignment.Center, Margin=Thickness(10.0))
 
-        /// Display the charts in a new WPF window
-        static member ShowAll (?IsMaximized : bool) =
+                    let helpButton = Button(Content="Help", FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=30.0)
+                    helpButton.Click.Add(fun _ -> Chart.ShowHelp window)
 
-            let isMaximized = defaultArg IsMaximized false
+                    let chartIndex = TextBlock(FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=20.0, VerticalAlignment=VerticalAlignment.Center)
 
-            let toPlotView (ch : #GenericChart) =
+                    let updateDisplay() = chartIndex.Text <- sprintf "%d of %d" ((getCurrentPlotIndex()) + 1) plots.Length
+                
+                    let decrementPlotIndex = decrementPlotIndex >> updateDisplay
+                    let incrementPlotIndex = incrementPlotIndex >> updateDisplay
+                    let setFirstPlotIndex  = setFirstPlotIndex  >> updateDisplay
+                    let setLastPlotIndex   = setLastPlotIndex   >> updateDisplay
 
-                let width =
-                    if isMaximized then
-                        System.Windows.SystemParameters.FullPrimaryScreenWidth - 25.0
-                    else
-                        Chart.GetOptionalWidth ch.Width |> float
+                    updateDisplay()
 
-                let height =
-                    if isMaximized then
-                        System.Windows.SystemParameters.FullPrimaryScreenHeight
-                    else
-                        Chart.GetOptionalHeight ch.Height |> float
+                    buttons.Children.Add decrementButton |> ignore
+                    buttons.Children.Add incrementButton |> ignore
+                    buttons.Children.Add chartIndex      |> ignore
+                    buttons.Children.Add helpButton      |> ignore
 
-                OxyPlot.Wpf.PlotView(Height = height, Width = width, Model = ch.Model)
+                    contents.Children.Add buttons |> ignore
 
-            fun (charts : _ list) ->
+                    let border = Border()
+                    contents.Children.Add border |> ignore
+                    border.Child <- plots.[0]
 
-                let plots = charts |> List.map toPlotView
+                    let getCurrentPlot () = getPlot (getCurrentPlotIndex())
 
-                let window =
-                    match plots with
-                    | [] -> Window(Width = 100.0, Height = 100.0)
-                    | h::_ ->
-                        let window = Window(Width = h.Width + 10.0, Height = h.Height + 10.0)
+                    let resizePlot () =
+                        match getCurrentPlot () with
+                        | Some x ->
+                            x.Width  <- max 100.0 (window.ActualWidth  - 100.0)
+                            x.Height <- max 100.0 (window.ActualHeight - 100.0)
+                        | None -> ()
 
-                        window.Content <-
-                            ScrollViewer
-                                (
-                                    Content =
-                                        (
-//                                            let panel = StackPanel()
-//                                            plots |> List.iter (panel.Children.Add >> ignore)
-                                            let panel = ListBox()
-                                            panel.ItemsSource <- plots
-                                            panel
-                                        )
-                                )
+                    let givePlotKeyboardFocus () = getCurrentPlot () |> Option.iter (fun x -> x.Focus() |> ignore)
 
-                        window
+                    let viewCurrentPlot () =
+                        match getCurrentPlot () with
+                        | Some x ->
+                            border.Child <- x
+                            resizePlot ()
+                            givePlotKeyboardFocus ()
+                        | None -> ()
 
-                if isMaximized then
-                    window.WindowState <- WindowState.Maximized
+                    let toggleOrigin =
+                        let showOrigin = ref false // So on the initial invocation it toggles to true
 
-                ignore <| window.ShowDialog()
+                        fun () ->
+                            showOrigin := not !showOrigin
+
+                            match getCurrentPlot () with
+                            | None -> ()
+                            | Some p ->
+                                if showOrigin.Value then
+                                    p.Model.Axes |> Seq.iter (fun a -> a.Minimum <- 0.0)
+                                else
+                                    let ms = axisMinimums.[p]
+                                    p.Model.Axes |> Seq.iteri (fun i a -> a.Minimum <- ms.[i])
+
+                                p.ActualController.HandleKeyDown(p, OxyKeyEventArgs(Key = OxyKey.A)) |> ignore
+
+                    let goToFirstPlot    = setFirstPlotIndex  >> viewCurrentPlot
+                    let goToPreviousPlot = decrementPlotIndex >> viewCurrentPlot
+                    let goToNextPlot     = incrementPlotIndex >> viewCurrentPlot
+                    let goToLastPlot     = setLastPlotIndex   >> viewCurrentPlot
+
+                    decrementButton.Click.Add (ignore >> goToPreviousPlot)
+                    incrementButton.Click.Add (ignore >> goToNextPlot)
+
+                    window.SizeChanged.Add (ignore >> resizePlot) // Update the size when the window is resized
+                    window.StateChanged.Add(ignore >> resizePlot) // Update the size when the window is maximized etc.
+
+                    window.PreviewKeyUp.Add
+                        (
+                            fun x ->
+                                x.Handled <-
+                                    match x.Key with
+                                    | System.Windows.Input.Key.Left  when x.KeyboardDevice.Modifiers = ModifierKeys.Control -> goToPreviousPlot (); true
+                                    | System.Windows.Input.Key.Right when x.KeyboardDevice.Modifiers = ModifierKeys.Control -> goToNextPlot     (); true
+                                    | System.Windows.Input.Key.Left  when x.KeyboardDevice.Modifiers = (ModifierKeys.Alt ||| ModifierKeys.Control) -> goToFirstPlot (); true
+                                    | System.Windows.Input.Key.Right when x.KeyboardDevice.Modifiers = (ModifierKeys.Alt ||| ModifierKeys.Control) -> goToLastPlot  (); true
+                                    | System.Windows.Input.Key.Z     -> toggleOrigin (); true
+                                    | _ -> false
+                        )
+
+                    // initialize
+                    resizePlot ()
+                    givePlotKeyboardFocus ()
+
+                    contents
+
+
+                if isModal then
+                    window.ShowDialog() |> ignore
+                else
+                    window.Show()
+
+        /// Display the chart in a new WPF window
+        static member Show (?IsMaximized : bool) = fun (ch : #GenericChart) -> Chart.ShowAll (?IsMaximized=IsMaximized) [ch]
 
         static member SavePng (fileName, ?Width : int, ?Height : int) =
             let width  = Chart.GetOptionalWidth  Width 
@@ -1989,8 +2104,8 @@ namespace FSharp.Charting
         /// <param name="Alignment">The alignment for the title</param>
         /// <param name="Docking">The docking location for the title</param>
         static member WithTitle
-            (?Text, ?InsideArea, (*?Style, Note: not sure what do with this one *) ?FontName, ?FontSize, ?FontStyle, ?Background, ?Color, ?BorderColor, ?BorderWidth, ?BorderDashStyle, 
-                ?Orientation, ?Alignment, ?Docking) = 
+            (?Text, (* TODO: ?InsideArea, (*?Style, Note: not sure what do with this one *)*) ?FontName, ?FontSize, ?FontStyle (* TODO: , ?Background, ?Color, ?BorderColor, ?BorderWidth, ?BorderDashStyle, 
+                ?Orientation, ?Alignment, ?Docking *)) =
             let font = StyleHelper.OptionalFont(?Name=FontName, ?Size=FontSize, ?Style=FontStyle) 
             fun (ch : #GenericChart) ->
                 ch |> Helpers.ApplyStyles(?Title=Text, (*?TitleStyle=Style,*) ?TitleFont=font) // TODO: , ?TitleBackground=Background, ?TitleColor=Color, ?TitleBorderColor=BorderColor, ?TitleBorderWidth=BorderWidth, ?TitleBorderDashStyle=BorderDashStyle, ?TitleOrientation=Orientation, ?TitleAlignment=Alignment, ?TitleDocking=Docking, ?TitleInsideArea=InsideArea)
