@@ -1237,8 +1237,8 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Line(data:seq<('key :> key) * #value>,?Name,?Title,?Color,?XTitle,?YTitle) = 
-           GenericChart.Create(data |> listen |> makeItems (fun (x,y) -> LineChartItem(x,y)), LineSeries(DataFieldX="X",DataFieldY="Y"))
+        static member Line(data:seq<('key :> key) * #value>,?Name,?Title,?Color,?XTitle,?YTitle,?Thickness) = 
+           GenericChart.Create(data |> listen |> makeItems (fun (x,y) -> LineChartItem(x,y)), LineSeries(DataFieldX="X",DataFieldY="Y",StrokeThickness=defaultArg Thickness (LineSeries().StrokeThickness)))
              |> Helpers.ApplyStaticAxis(typeof<'key>, Axes.AxisPosition.Bottom)
              |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
 
