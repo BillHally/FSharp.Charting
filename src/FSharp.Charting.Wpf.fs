@@ -1286,8 +1286,22 @@ namespace FSharp.Charting
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
         static member Point(data:seq<#value*#value>,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?MarkerSize) = 
-           GenericChart.Create(data |> listen |> mergeLabels Labels |> makeItems (fun ((x,y),lab) -> ScatterChartItem(x,y,Size=(defaultArg MarkerSize 3.0),Tag=allowNull lab)), ScatterSeries(DataFieldX="X",DataFieldY="Y",DataFieldSize="Size",DataFieldTag="Tag",MarkerType=MarkerType.Circle, MarkerStroke= defaultArg Color (ScatterSeries().MarkerStroke)))
-             |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
+            let defaultValue = ScatterSeries()
+
+            GenericChart.Create
+                (
+                    data
+                    |> listen
+                    |> mergeLabels Labels
+                    |> makeItems
+                        (
+                            fun ((x, y), lab) ->
+                                ScatterChartItem(x, y, Size=(defaultArg MarkerSize 3.0), Tag=allowNull lab)
+                        ),
+                     
+                        ScatterSeries(DataFieldX="X", DataFieldY="Y", DataFieldSize="Size", DataFieldTag="Tag", MarkerType=MarkerType.Circle, MarkerStroke= defaultArg Color defaultValue.MarkerStroke, TrackerFormatString=if Option.isSome Labels then "{Tag:0}" else defaultValue.TrackerFormatString)
+                )
+                |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
 
         /// <summary>Uses points to represent data points.</summary>
         /// <param name="data">The data for the chart.</param>
