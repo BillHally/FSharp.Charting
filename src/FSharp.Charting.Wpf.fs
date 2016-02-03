@@ -704,7 +704,7 @@ namespace FSharp.Charting
 
         type GenericChart internal (model : PlotModel) =  
             member internal this.Model = model
-            member internal this.Name = model.Title
+            member this.Name = model.Title
             member internal this.ChartTypeName = model.Title
 
             member val Width  : int option = None with get, set
@@ -760,10 +760,10 @@ namespace FSharp.Charting
                 match charts with
                 | []   -> GenericChart(PlotModel())
                 | [h]  -> h
-                | h::t ->
-                    let primaryChart = h
+                | x ->
+                    let primaryChart = GenericChart(PlotModel())
 
-                    t |> List.iter
+                    x |> List.iter
                         (
                             fun x ->
                                 x.Model.Series
@@ -817,25 +817,51 @@ namespace FSharp.Charting
                 ?Title,
                 ?TitleFont:Font,
                 ?AxisXTitle,
+                ?AxisXEnabled : bool,
+                ?AxisXLogarithmic : bool,
                 ?AxisXMinimum : float,
                 ?AxisXMaximum : float,
                 ?AxisYTitle,
+                ?AxisYEnabled : bool,
+                ?AxisYLogarithmic : bool,
                 ?AxisYMinimum : float,
                 ?AxisYMaximum : float,
                 ?InsideArea : bool,
+                ?LegendEnabled : bool,
                 ?LegendPosition : Position
             ) =
-                
+                let createAxis logarithmic position =
+                    let axis =
+                        if logarithmic then
+                            Axes.LogarithmicAxis() :> Axes.Axis
+                        else
+                            Axes.LinearAxis() :> Axes.Axis
+                    axis.Position <- position
+
+                    axis
+
                 fun (ch:('T :> GenericChart)) -> 
                     let model = ch.Model
                     let seriesIter f = for s in model.Series do f s
+
+                    let createAxis logRequired isXAxis =
+                        let axis = createAxis logRequired (if isXAxis then Axes.AxisPosition.Bottom else Axes.AxisPosition.Left)
+                        model.Axes.Add axis
+                        axis
+
                     let ensureDefaultAxis (X) =
+                        let logRequired = if X then defaultArg AxisXLogarithmic false else defaultArg AxisYLogarithmic false
+
                         match model.Axes |> Seq.tryFind (fun x -> (if X then x.IsHorizontal() else x.IsVertical()) && x.IsXyAxis()) with 
-                        | None -> 
-                            let axis = Axes.LinearAxis(Position = if X then Axes.AxisPosition.Bottom else Axes.AxisPosition.Left)
-                            model.Axes.Add axis
-                            axis :> Axes.Axis
-                        | Some a -> a
+                        | None   -> 
+                            createAxis logRequired X
+                        | Some a ->
+                            match a, logRequired with
+                            | :? Axes.LogarithmicAxis, true
+                            |                       _, false -> a
+                            | _, logRequired ->
+                                model.Axes.Remove a |> ignore
+                                createAxis logRequired X
 
                     let ensureDefaultXAxis () = ensureDefaultAxis true
                     let ensureDefaultYAxis () = ensureDefaultAxis false
@@ -851,15 +877,19 @@ namespace FSharp.Charting
                     Title |> Option.iter (fun t -> model.Title <- t)
                     TitleFont |> Option.iter (fun f -> model.TitleFont <- f.Name; model.TitleFontSize <- f.Size; model.TitleFontWeight <- f.Style)
 
-                    AxisXTitle |> Option.iter (fun t -> ensureDefaultXAxis().Title <- t)
+                    AxisXTitle   |> Option.iter (fun t -> ensureDefaultXAxis().Title <- t)
+                    AxisXEnabled |> Option.iter (fun x -> ensureDefaultXAxis().IsAxisVisible <- x)
                     AxisXMinimum |> Option.iter (fun x -> ensureDefaultXAxis().Minimum <- x)
                     AxisXMaximum |> Option.iter (fun x -> ensureDefaultXAxis().Maximum <- x)
 
-                    AxisYTitle |> Option.iter (fun t -> ensureDefaultYAxis().Title <- t)
+                    AxisYTitle   |> Option.iter (fun t -> ensureDefaultYAxis().Title <- t)
+                    AxisYEnabled |> Option.iter (fun x -> ensureDefaultXAxis().IsAxisVisible <- x)
                     AxisYMinimum |> Option.iter (fun x -> ensureDefaultYAxis().Minimum <- x)
                     AxisYMaximum |> Option.iter (fun x -> ensureDefaultYAxis().Maximum <- x)
 
                     InsideArea |> Option.iter (fun x -> model.LegendPlacement <- (if x then LegendPlacement.Inside else LegendPlacement.Outside))
+
+                    LegendEnabled |> Option.iter (fun x -> model.IsLegendVisible <- x)
                     LegendPosition |> Option.iter (fun x -> model.LegendPosition <- Helpers.ToLegendPosition x)
 
                     ch
@@ -1836,6 +1866,7 @@ namespace FSharp.Charting
 
                     contents.RowDefinitions.Add (RowDefinition())
 
+                add "'H'"                                                  "Show help"
                 add "'A' or Home"                                          "Reset axes"
                 add "Right mouse button"                                   "Drag plot"
                 add "Left mouse button"                                    "Track points in a series"
@@ -1867,144 +1898,145 @@ namespace FSharp.Charting
 
                 let charts = Array.ofSeq charts
 
-                let width  = System.Windows.SystemParameters.FullPrimaryScreenWidth  / 2.0
-                let height = System.Windows.SystemParameters.FullPrimaryScreenHeight / 2.0
+                if charts.Length > 0 then
+                    let width  = System.Windows.SystemParameters.FullPrimaryScreenWidth  / 2.0
+                    let height = System.Windows.SystemParameters.FullPrimaryScreenHeight / 2.0
 
-                let plots = charts |> Array.map toPlotView
+                    let plots = charts |> Array.map toPlotView
 
-                let axisMinimums = Dictionary<PlotView, _ []>() // Can't use F# Map because PlotView, GenericChart etc. don't implement IComparable
+                    let axisMinimums = Dictionary<PlotView, _ []>() // Can't use F# Map because PlotView, GenericChart etc. don't implement IComparable
                 
-                plots |> Array.iter (fun x -> axisMinimums.[x] <- x.Model.Axes |> Seq.map (fun a -> a.Minimum) |> Array.ofSeq)
+                    plots |> Array.iter (fun x -> axisMinimums.[x] <- x.Model.Axes |> Seq.map (fun a -> a.Minimum) |> Array.ofSeq)
 
-                let getPlot n =
-                    match n with
-                    | n when n < 0 -> 0
-                    | n when n >= plots.Length -> plots.Length - 1
-                    | n -> n
-                    |> (
-                        function
-                        | n when n >= 0 && n < plots.Length -> Some plots.[n]
-                        | _ -> None
-                       )
+                    let getPlot n =
+                        match n with
+                        | n when n < 0 -> 0
+                        | n when n >= plots.Length -> plots.Length - 1
+                        | n -> n
+                        |> (
+                            function
+                            | n when n >= 0 && n < plots.Length -> Some plots.[n]
+                            | _ -> None
+                           )
 
-                let getCurrentPlotIndex, decrementPlotIndex, incrementPlotIndex, setFirstPlotIndex, setLastPlotIndex =
-                    let index = ref 0
+                    let getCurrentPlotIndex, decrementPlotIndex, incrementPlotIndex, setFirstPlotIndex, setLastPlotIndex =
+                        let index = ref 0
 
-                    (fun () -> !index),
-                    (fun () -> if !index > 0 then decr index),
-                    (fun () -> if !index < plots.Length - 1 then incr index),
-                    (fun () -> index := 0),
-                    (fun () -> index := plots.Length - 1)
+                        (fun () -> !index),
+                        (fun () -> if !index > 0 then decr index),
+                        (fun () -> if !index < plots.Length - 1 then incr index),
+                        (fun () -> index := 0),
+                        (fun () -> index := plots.Length - 1)
 
-                let window = Window(Width = width, Height = height, WindowState = windowState)
+                    let window = Window(Width = width, Height = height, WindowState = windowState)
 
-                window.Content <-
-                    let contents = StackPanel()
+                    window.Content <-
+                        let contents = StackPanel()
 
-                    let buttons = StackPanel(Orientation=Orientation.Horizontal)
+                        let buttons = StackPanel(Orientation=Orientation.Horizontal)
 
-                    let decrementButton = Button(Content="<", FontSize = 15.0, FontWeight = FontWeights.Bold, Width=50.0, Height=30.0, VerticalContentAlignment=VerticalAlignment.Center, Margin=Thickness(10.0))
-                    let incrementButton = Button(Content=">", FontSize = 15.0, FontWeight = FontWeights.Bold, Width=50.0, Height=30.0, VerticalContentAlignment=VerticalAlignment.Center, Margin=Thickness(10.0))
+                        let decrementButton = Button(Content="<", FontSize = 15.0, FontWeight = FontWeights.Bold, Width=50.0, Height=30.0, VerticalContentAlignment=VerticalAlignment.Center, Margin=Thickness(10.0))
+                        let incrementButton = Button(Content=">", FontSize = 15.0, FontWeight = FontWeights.Bold, Width=50.0, Height=30.0, VerticalContentAlignment=VerticalAlignment.Center, Margin=Thickness(10.0))
 
-                    let helpButton = Button(Content="Help", FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=30.0)
-                    helpButton.Click.Add(fun _ -> Chart.ShowHelp window)
+                        let helpButton = Button(Content="Help", FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=30.0)
+                        helpButton.Click.Add(fun _ -> Chart.ShowHelp window)
 
-                    let chartIndex = TextBlock(FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=20.0, VerticalAlignment=VerticalAlignment.Center)
+                        let chartIndex = TextBlock(FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=20.0, VerticalAlignment=VerticalAlignment.Center)
 
-                    let updateDisplay() = chartIndex.Text <- sprintf "%d of %d" ((getCurrentPlotIndex()) + 1) plots.Length
+                        let updateDisplay() = chartIndex.Text <- sprintf "%d of %d" ((getCurrentPlotIndex()) + 1) plots.Length
                 
-                    let decrementPlotIndex = decrementPlotIndex >> updateDisplay
-                    let incrementPlotIndex = incrementPlotIndex >> updateDisplay
-                    let setFirstPlotIndex  = setFirstPlotIndex  >> updateDisplay
-                    let setLastPlotIndex   = setLastPlotIndex   >> updateDisplay
+                        let decrementPlotIndex = decrementPlotIndex >> updateDisplay
+                        let incrementPlotIndex = incrementPlotIndex >> updateDisplay
+                        let setFirstPlotIndex  = setFirstPlotIndex  >> updateDisplay
+                        let setLastPlotIndex   = setLastPlotIndex   >> updateDisplay
 
-                    updateDisplay()
+                        updateDisplay()
 
-                    buttons.Children.Add decrementButton |> ignore
-                    buttons.Children.Add incrementButton |> ignore
-                    buttons.Children.Add chartIndex      |> ignore
-                    buttons.Children.Add helpButton      |> ignore
+                        buttons.Children.Add decrementButton |> ignore
+                        buttons.Children.Add incrementButton |> ignore
+                        buttons.Children.Add chartIndex      |> ignore
+                        buttons.Children.Add helpButton      |> ignore
 
-                    contents.Children.Add buttons |> ignore
+                        contents.Children.Add buttons |> ignore
 
-                    let border = Border()
-                    contents.Children.Add border |> ignore
-                    border.Child <- plots.[0]
+                        let border = Border()
+                        contents.Children.Add border |> ignore
+                        border.Child <- plots.[0]
 
-                    let getCurrentPlot () = getPlot (getCurrentPlotIndex())
+                        let getCurrentPlot () = getPlot (getCurrentPlotIndex())
 
-                    let resizePlot () =
-                        match getCurrentPlot () with
-                        | Some x ->
-                            x.Width  <- max 100.0 (window.ActualWidth  - 100.0)
-                            x.Height <- max 100.0 (window.ActualHeight - 100.0)
-                        | None -> ()
-
-                    let givePlotKeyboardFocus () = getCurrentPlot () |> Option.iter (fun x -> x.Focus() |> ignore)
-
-                    let viewCurrentPlot () =
-                        match getCurrentPlot () with
-                        | Some x ->
-                            border.Child <- x
-                            resizePlot ()
-                            givePlotKeyboardFocus ()
-                        | None -> ()
-
-                    let toggleOrigin =
-                        let showOrigin = ref false // So on the initial invocation it toggles to true
-
-                        fun () ->
-                            showOrigin := not !showOrigin
-
+                        let resizePlot () =
                             match getCurrentPlot () with
+                            | Some x ->
+                                x.Width  <- max 100.0 (window.ActualWidth  - 100.0)
+                                x.Height <- max 100.0 (window.ActualHeight - 100.0)
                             | None -> ()
-                            | Some p ->
-                                if showOrigin.Value then
-                                    p.Model.Axes |> Seq.iter (fun a -> a.Minimum <- 0.0)
-                                else
-                                    let ms = axisMinimums.[p]
-                                    p.Model.Axes |> Seq.iteri (fun i a -> a.Minimum <- ms.[i])
 
-                                p.ActualController.HandleKeyDown(p, OxyKeyEventArgs(Key = OxyKey.A)) |> ignore
+                        let givePlotKeyboardFocus () = getCurrentPlot () |> Option.iter (fun x -> x.Focus() |> ignore)
 
-                    let goToFirstPlot    = setFirstPlotIndex  >> viewCurrentPlot
-                    let goToPreviousPlot = decrementPlotIndex >> viewCurrentPlot
-                    let goToNextPlot     = incrementPlotIndex >> viewCurrentPlot
-                    let goToLastPlot     = setLastPlotIndex   >> viewCurrentPlot
+                        let viewCurrentPlot () =
+                            match getCurrentPlot () with
+                            | Some x ->
+                                border.Child <- x
+                                resizePlot ()
+                                givePlotKeyboardFocus ()
+                            | None -> ()
 
-                    decrementButton.Click.Add (ignore >> goToPreviousPlot)
-                    incrementButton.Click.Add (ignore >> goToNextPlot)
+                        let toggleOrigin =
+                            let showOrigin = ref false // So on the initial invocation it toggles to true
 
-                    window.SizeChanged.Add (ignore >> resizePlot) // Update the size when the window is resized
-                    window.StateChanged.Add(ignore >> resizePlot) // Update the size when the window is maximized etc.
+                            fun () ->
+                                showOrigin := not !showOrigin
 
-                    window.PreviewKeyUp.Add
-                        (
-                            fun x ->
-                                x.Handled <-
-                                    match x.Key with
-                                    | System.Windows.Input.Key.Left  when x.KeyboardDevice.Modifiers = ModifierKeys.Control -> goToPreviousPlot (); true
-                                    | System.Windows.Input.Key.Right when x.KeyboardDevice.Modifiers = ModifierKeys.Control -> goToNextPlot     (); true
-                                    | System.Windows.Input.Key.Left  when x.KeyboardDevice.Modifiers = (ModifierKeys.Alt ||| ModifierKeys.Control) -> goToFirstPlot (); true
-                                    | System.Windows.Input.Key.Right when x.KeyboardDevice.Modifiers = (ModifierKeys.Alt ||| ModifierKeys.Control) -> goToLastPlot  (); true
-                                    | System.Windows.Input.Key.Z     -> toggleOrigin (); true
-                                    | _ -> false
-                        )
+                                match getCurrentPlot () with
+                                | None -> ()
+                                | Some p ->
+                                    if showOrigin.Value then
+                                        p.Model.Axes |> Seq.iter (fun a -> a.Minimum <- 0.0)
+                                    else
+                                        let ms = axisMinimums.[p]
+                                        p.Model.Axes |> Seq.iteri (fun i a -> a.Minimum <- ms.[i])
 
-                    // initialize
-                    resizePlot ()
-                    givePlotKeyboardFocus ()
+                                    p.ActualController.HandleKeyDown(p, OxyKeyEventArgs(Key = OxyKey.A)) |> ignore
 
-                    contents
+                        let goToFirstPlot    = setFirstPlotIndex  >> viewCurrentPlot
+                        let goToPreviousPlot = decrementPlotIndex >> viewCurrentPlot
+                        let goToNextPlot     = incrementPlotIndex >> viewCurrentPlot
+                        let goToLastPlot     = setLastPlotIndex   >> viewCurrentPlot
+
+                        decrementButton.Click.Add (ignore >> goToPreviousPlot)
+                        incrementButton.Click.Add (ignore >> goToNextPlot)
+
+                        window.SizeChanged.Add (ignore >> resizePlot) // Update the size when the window is resized
+                        window.StateChanged.Add(ignore >> resizePlot) // Update the size when the window is maximized etc.
+
+                        window.PreviewKeyUp.Add
+                            (
+                                fun x ->
+                                    x.Handled <-
+                                        match x.Key with
+                                        | System.Windows.Input.Key.Left  when x.KeyboardDevice.Modifiers = ModifierKeys.Control -> goToPreviousPlot (); true
+                                        | System.Windows.Input.Key.Right when x.KeyboardDevice.Modifiers = ModifierKeys.Control -> goToNextPlot     (); true
+                                        | System.Windows.Input.Key.Left  when x.KeyboardDevice.Modifiers = (ModifierKeys.Alt ||| ModifierKeys.Control) -> goToFirstPlot (); true
+                                        | System.Windows.Input.Key.Right when x.KeyboardDevice.Modifiers = (ModifierKeys.Alt ||| ModifierKeys.Control) -> goToLastPlot  (); true
+                                        | System.Windows.Input.Key.Z     -> toggleOrigin (); true
+                                        | _ -> false
+                            )
+
+                        // initialize
+                        resizePlot ()
+                        givePlotKeyboardFocus ()
+
+                        contents
 
 
-                if isModal then
-                    window.ShowDialog() |> ignore
-                else
-                    window.Show()
+                    if isModal then
+                        window.ShowDialog() |> ignore
+                    else
+                        window.Show()
 
         /// Display the chart in a new WPF window
-        static member Show (?IsMaximized : bool) = fun (ch : #GenericChart) -> Chart.ShowAll (?IsMaximized=IsMaximized) [ch]
+        static member Show (?IsMaximized : bool, ?IsModal : bool) = fun (ch : #GenericChart) -> Chart.ShowAll (?IsMaximized=IsMaximized, ?IsModal=IsModal) [ch]
 
         static member SavePng (fileName, ?Width : int, ?Height : int) =
             let width  = Chart.GetOptionalWidth  Width 
@@ -2053,14 +2085,14 @@ namespace FSharp.Charting
         /// <param name="TitleColor">The color of the title of the axis</param>
         /// <param name="Tooltip">The tooltip to use for the axis</param>
         static member WithXAxis
-            ((* TODO: ?Enabled, ?Title, *) ?Max, ?Min) (*, TODO: ?Log, ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
-                ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip)*) =
+            (?Enabled, ?Title, ?Max, ?Min, ?Log (*, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
+                ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip *)) =
 
             // TODO: let titleFont = StyleHelper.OptionalFont(?Name=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle) 
 
             fun (ch : #GenericChart) ->
-                ch |> Helpers.ApplyStyles((* TODO: ?AxisXLogarithmic=Log,?AxisXEnabled=Enabled, ?AxisXArrowStyle=ArrowStyle, ?AxisXLabelStyle=LabelStyle, (* ?AxisXIsMarginVisible=IsMarginVisible, *)*) ?AxisXMaximum=Max, ?AxisXMinimum=Min) (* TODO: , ?AxisXMajorGrid=MajorGrid, ?AxisXMinorGrid=MinorGrid, ?AxisXMajorTickMark=MajorTickMark, ?AxisXMinorTickMark=MinorTickMark, 
-                                        ?AxisXTitle=Title, ?AxisXTitleAlignment=TitleAlignment, ?AxisXTitleFont=titleFont, ?AxisXTitleForeColor=TitleColor, ?AxisXToolTip=ToolTip) *)
+                ch |> Helpers.ApplyStyles(?AxisXLogarithmic=Log, ?AxisXEnabled=Enabled, (* TODO: ?AxisXArrowStyle=ArrowStyle, ?AxisXLabelStyle=LabelStyle, (* ?AxisXIsMarginVisible=IsMarginVisible, *)*) ?AxisXMaximum=Max, ?AxisXMinimum=Min, (* TODO: , ?AxisXMajorGrid=MajorGrid, ?AxisXMinorGrid=MinorGrid, ?AxisXMajorTickMark=MajorTickMark, ?AxisXMinorTickMark=MinorTickMark,  *)
+                                        ?AxisXTitle=Title (* TODO: , ?AxisXTitleAlignment=TitleAlignment, ?AxisXTitleFont=titleFont, ?AxisXTitleForeColor=TitleColor, ?AxisXToolTip=ToolTip *))
 
             /// <summary>Apply styling to the Y Axis</summary>
             /// <param name="Enabled">If false, disables the axis</param>
@@ -2080,13 +2112,13 @@ namespace FSharp.Charting
             /// <param name="TitleColor">The color of the title of the axis</param>
             /// <param name="Tooltip">The tooltip to use for the axis</param>
         static member WithYAxis
-            ((* TODO: ?Enabled, ?Title, *) ?Max, ?Min) (*, TODO: ?Log, ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
+            (?Enabled, ?Title, ?Max, ?Min, ?Log) (*, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
                 ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip)*) =
 
             // TODO: let titleFont = StyleHelper.OptionalFont(?Name=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle) 
 
             fun (ch : #GenericChart) ->
-                ch |> Helpers.ApplyStyles((* TODO: ?AxisYLogarithmic=Log,?AxisYEnabled=Enabled,?AxisYArrowStyle=ArrowStyle,  ?AxisYLabelStyle=LabelStyle, (* ?AxisYIsMarginVisible=IsMarginVisible, *)*) ?AxisYMaximum=Max, ?AxisYMinimum=Min) (* TODO: , ?AxisYMajorGrid=MajorGrid, ?AxisYMinorGrid=MinorGrid, ?AxisYMajorTickMark=MajorTickMark, ?AxisYMinorTickMark=MinorTickMark, ?AxisYTitle=Title, ?AxisYTitleAlignment=TitleAlignment, ?AxisYTitleFont=titleFont, ?AxisYTitleForeColor=TitleColor, ?AxisYToolTip=ToolTip)  *)
+                ch |> Helpers.ApplyStyles(?AxisYLogarithmic=Log,?AxisYEnabled=Enabled, (* TODO: ?AxisYArrowStyle=ArrowStyle,  ?AxisYLabelStyle=LabelStyle, (* ?AxisYIsMarginVisible=IsMarginVisible, *)*) ?AxisYMaximum=Max, ?AxisYMinimum=Min, (* TODO: , ?AxisYMajorGrid=MajorGrid, ?AxisYMinorGrid=MinorGrid, ?AxisYMajorTickMark=MajorTickMark, ?AxisYMinorTickMark=MinorTickMark, *) ?AxisYTitle=Title(* TODO: , ?AxisYTitleAlignment=TitleAlignment, ?AxisYTitleFont=titleFont, ?AxisYTitleForeColor=TitleColor, ?AxisYToolTip=ToolTip *))
 
         /// <summary>Apply content and styling to the title, if present</summary>
         /// <param name="InsideArea">If false, locates the title outside the chart area</param>
@@ -2113,17 +2145,17 @@ namespace FSharp.Charting
         /// <summary>Apply styling to the legend of the chart</summary>
         /// <param name="InsideArea">If false, places the legend outside the chart area</param>
         static member WithLegend
-            ((* TODO: ?Enabled,?Title, ?Background, ?FontName,  ?FontSize, ?FontStyle, ?Alignment, ?Docking,*)
-            ?InsideArea, 
-            ?Position
-            (* TODO: ?TitleAlignment, ?TitleFont, ?TitleColor, ?BorderColor, ?BorderWidth, ?BorderDashStyle*)) = 
+            (?Enabled,(* TODO: ?Title, ?Background, ?FontName,  ?FontSize, ?FontStyle, ?Alignment, ?Docking,*)
+             ?InsideArea, 
+             ?Position
+             (* TODO: ?TitleAlignment, ?TitleFont, ?TitleColor, ?BorderColor, ?BorderWidth, ?BorderDashStyle*)) = 
             (* TODO:
             let font = StyleHelper.OptionalFont(?Family=FontName, ?Size=FontSize, ?Style=FontStyle) 
             // Specifying AndLegend enables the legend by default
             let legendEnabled = defaultArg Enabled true
             *)
             fun (ch : #GenericChart) ->
-                ch |> Helpers.ApplyStyles((* TODO: LegendEnabled=legendEnabled,?LegendTitle=Title, ?LegendBackground=Background, ?LegendFont=font,*) ?InsideArea=InsideArea, ?LegendPosition=Position)(* TODO:, ?LegendDocking=Docking, ?LegendIsDockedInsideArea=InsideArea,
+                ch |> Helpers.ApplyStyles(?LegendEnabled=Enabled,(* TODO: ?LegendTitle=Title, ?LegendBackground=Background, ?LegendFont=font,*) ?InsideArea=InsideArea, ?LegendPosition=Position)(* TODO:, ?LegendDocking=Docking, ?LegendIsDockedInsideArea=InsideArea,
                                     ?LegendTitleAlignment=TitleAlignment, ?LegendTitleFont=TitleFont, ?LegendTitleForeColor=TitleColor, ?LegendBorderColor=BorderColor, ?LegendBorderWidth=BorderWidth, ?LegendBorderDashStyle=BorderDashStyle) *)
 
         static member WithSize (width, height) (ch : #GenericChart) =
