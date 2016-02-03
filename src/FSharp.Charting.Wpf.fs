@@ -1919,14 +1919,15 @@ namespace FSharp.Charting
                             | _ -> None
                            )
 
-                    let getCurrentPlotIndex, decrementPlotIndex, incrementPlotIndex, setFirstPlotIndex, setLastPlotIndex =
+                    let getCurrentPlotIndex, decrementPlotIndex, incrementPlotIndex, setFirstPlotIndex, setLastPlotIndex, setCurrentPlotIndex =
                         let index = ref 0
 
                         (fun () -> !index),
                         (fun () -> if !index > 0 then decr index),
                         (fun () -> if !index < plots.Length - 1 then incr index),
                         (fun () -> index := 0),
-                        (fun () -> index := plots.Length - 1)
+                        (fun () -> index := plots.Length - 1),
+                        (fun n -> if n >= 0 && n < plots.Length then index := n)
 
                     let window = Window(Width = width, Height = height, WindowState = windowState)
 
@@ -1938,23 +1939,30 @@ namespace FSharp.Charting
                         let decrementButton = Button(Content="<", FontSize = 15.0, FontWeight = FontWeights.Bold, Width=50.0, Height=30.0, VerticalContentAlignment=VerticalAlignment.Center, Margin=Thickness(10.0))
                         let incrementButton = Button(Content=">", FontSize = 15.0, FontWeight = FontWeights.Bold, Width=50.0, Height=30.0, VerticalContentAlignment=VerticalAlignment.Center, Margin=Thickness(10.0))
 
+                        let chartIndex = TextBlock(FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=20.0, VerticalAlignment=VerticalAlignment.Center)
+
+                        let plotSelector = ComboBox(FontSize=15.0, MinWidth=250.0, Margin=Thickness(10.0), Height=25.0, VerticalAlignment=VerticalAlignment.Center, DisplayMemberPath = "ActualModel.Title", ItemsSource=plots, IsReadOnly=false, IsEditable=false, SelectedIndex = 0)
+
                         let helpButton = Button(Content="Help", FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=30.0)
                         helpButton.Click.Add(fun _ -> Chart.ShowHelp window)
 
-                        let chartIndex = TextBlock(FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=20.0, VerticalAlignment=VerticalAlignment.Center)
-
-                        let updateDisplay() = chartIndex.Text <- sprintf "%d of %d" ((getCurrentPlotIndex()) + 1) plots.Length
+                        let updateDisplay() =
+                            let currentIndex = getCurrentPlotIndex()
+                            chartIndex.Text <- sprintf "%d of %d" (currentIndex + 1) plots.Length
+                            plotSelector.SelectedIndex <- currentIndex
                 
-                        let decrementPlotIndex = decrementPlotIndex >> updateDisplay
-                        let incrementPlotIndex = incrementPlotIndex >> updateDisplay
-                        let setFirstPlotIndex  = setFirstPlotIndex  >> updateDisplay
-                        let setLastPlotIndex   = setLastPlotIndex   >> updateDisplay
+                        let decrementPlotIndex  = decrementPlotIndex  >> updateDisplay
+                        let incrementPlotIndex  = incrementPlotIndex  >> updateDisplay
+                        let setFirstPlotIndex   = setFirstPlotIndex   >> updateDisplay
+                        let setLastPlotIndex    = setLastPlotIndex    >> updateDisplay
+                        let setCurrentPlotIndex = setCurrentPlotIndex >> updateDisplay 
 
                         updateDisplay()
 
                         buttons.Children.Add decrementButton |> ignore
                         buttons.Children.Add incrementButton |> ignore
                         buttons.Children.Add chartIndex      |> ignore
+                        buttons.Children.Add plotSelector    |> ignore
                         buttons.Children.Add helpButton      |> ignore
 
                         contents.Children.Add buttons |> ignore
@@ -1999,13 +2007,16 @@ namespace FSharp.Charting
 
                                     p.ActualController.HandleKeyDown(p, OxyKeyEventArgs(Key = OxyKey.A)) |> ignore
 
-                        let goToFirstPlot    = setFirstPlotIndex  >> viewCurrentPlot
-                        let goToPreviousPlot = decrementPlotIndex >> viewCurrentPlot
-                        let goToNextPlot     = incrementPlotIndex >> viewCurrentPlot
-                        let goToLastPlot     = setLastPlotIndex   >> viewCurrentPlot
+                        let goToFirstPlot       = setFirstPlotIndex  >> viewCurrentPlot
+                        let goToPreviousPlot    = decrementPlotIndex >> viewCurrentPlot
+                        let goToNextPlot        = incrementPlotIndex >> viewCurrentPlot
+                        let goToLastPlot        = setLastPlotIndex   >> viewCurrentPlot
+                        let setCurrentPlotIndex = setCurrentPlotIndex >> viewCurrentPlot
 
                         decrementButton.Click.Add (ignore >> goToPreviousPlot)
                         incrementButton.Click.Add (ignore >> goToNextPlot)
+                        plotSelector.SelectionChanged.Add(fun _ -> setCurrentPlotIndex plotSelector.SelectedIndex)
+
 
                         window.SizeChanged.Add (ignore >> resizePlot) // Update the size when the window is resized
                         window.StateChanged.Add(ignore >> resizePlot) // Update the size when the window is maximized etc.
