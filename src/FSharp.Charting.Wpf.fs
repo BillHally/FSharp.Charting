@@ -2038,18 +2038,22 @@ namespace FSharp.Charting
         /// Display the chart in a new WPF window
         static member Show (?IsMaximized : bool, ?IsModal : bool) = fun (ch : #GenericChart) -> Chart.ShowAll (?IsMaximized=IsMaximized, ?IsModal=IsModal) [ch]
 
-        static member SavePng (fileName, ?Width : int, ?Height : int) =
+        static member SavePng (fileName : string, ?Width : int, ?Height : int) =
             let width  = Chart.GetOptionalWidth  Width 
             let height = Chart.GetOptionalHeight Height
+
+            let fileName = if fileName.ToLowerInvariant().EndsWith(".png") then fileName else sprintf "%s.png" fileName
 
             fun (ch : #GenericChart) ->
                 use stream = System.IO.File.Create fileName
                 let pngExporter = OxyPlot.Wpf.PngExporter(Background = OxyColors.White, Width = width, Height = height)
                 pngExporter.Export(ch.Model, stream)
 
-        static member SavePdf (fileName, ?Width, ?Height) =
+        static member SavePdf (fileName : string, ?Width, ?Height) =
             let width  = Chart.GetOptionalWidth  Width  |> float
             let height = Chart.GetOptionalHeight Height |> float
+
+            let fileName = if fileName.ToLowerInvariant().EndsWith(".pdf") then fileName else sprintf "%s.pdf" fileName
 
             fun (ch : #GenericChart) ->
                 use stream = System.IO.File.Create fileName
