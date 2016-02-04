@@ -815,7 +815,9 @@ namespace FSharp.Charting
                 ?Color,
                 ?Name,
                 ?Title,
+                ?Subtitle,
                 ?TitleFont:Font,
+                ?SubtitleFont:Font,
                 ?AxisXTitle,
                 ?AxisXEnabled : bool,
                 ?AxisXLogarithmic : bool,
@@ -876,6 +878,9 @@ namespace FSharp.Charting
 
                     Title |> Option.iter (fun t -> model.Title <- t)
                     TitleFont |> Option.iter (fun f -> model.TitleFont <- f.Name; model.TitleFontSize <- f.Size; model.TitleFontWeight <- f.Style)
+
+                    Subtitle |> Option.iter (fun t -> model.Subtitle <- t)
+                    SubtitleFont |> Option.iter (fun f -> model.SubtitleFont <- f.Name; model.SubtitleFontSize <- f.Size; model.SubtitleFontWeight <- f.Style)
 
                     AxisXTitle   |> Option.iter (fun t -> ensureDefaultXAxis().Title <- t)
                     AxisXEnabled |> Option.iter (fun x -> ensureDefaultXAxis().IsAxisVisible <- x)
@@ -2162,6 +2167,13 @@ namespace FSharp.Charting
             fun (ch : #GenericChart) ->
                 ch |> Helpers.ApplyStyles(?Title=Text, (*?TitleStyle=Style,*) ?TitleFont=font) // TODO: , ?TitleBackground=Background, ?TitleColor=Color, ?TitleBorderColor=BorderColor, ?TitleBorderWidth=BorderWidth, ?TitleBorderDashStyle=BorderDashStyle, ?TitleOrientation=Orientation, ?TitleAlignment=Alignment, ?TitleDocking=Docking, ?TitleInsideArea=InsideArea)
 
+        static member WithSubtitle
+            (?Text, (* TODO: ?InsideArea, (*?Style, Note: not sure what do with this one *)*) ?FontName, ?FontSize, ?FontStyle (* TODO: , ?Background, ?Color, ?BorderColor, ?BorderWidth, ?BorderDashStyle, 
+                ?Orientation, ?Alignment, ?Docking *)) =
+            let font = StyleHelper.OptionalFont(?Name=FontName, ?Size=FontSize, ?Style=FontStyle) 
+            fun (ch : #GenericChart) ->
+                ch |> Helpers.ApplyStyles(?Subtitle=Text, (*?TitleStyle=Style,*) ?SubtitleFont=font) // TODO: , ?TitleBackground=Background, ?TitleColor=Color, ?TitleBorderColor=BorderColor, ?TitleBorderWidth=BorderWidth, ?TitleBorderDashStyle=BorderDashStyle, ?TitleOrientation=Orientation, ?TitleAlignment=Alignment, ?TitleDocking=Docking, ?TitleInsideArea=InsideArea)
+
         /// <summary>Apply styling to the legend of the chart</summary>
         /// <param name="InsideArea">If false, places the legend outside the chart area</param>
         static member WithLegend
@@ -2776,9 +2788,10 @@ namespace FSharp.Charting
                 | false -> dict.Add(defaultName, createCounter()); defaultName
 
         type ChartTypes.GenericChart with
-            member ch.WithXAxis args = ch |> Chart.WithXAxis args
-            member ch.WithTitle args = ch |> Chart.WithTitle args
-            member ch.ShowChart args = ch |> Chart.Show      args
+            member ch.WithXAxis    args = ch |> Chart.WithXAxis    args
+            member ch.WithTitle    args = ch |> Chart.WithTitle    args
+            member ch.WithSubtitle args = ch |> Chart.WithSubtitle args
+            member ch.ShowChart    args = ch |> Chart.Show         args
 
 #if INCOMPLETE_API
             /// <summary>Apply styling to the second X axis, if present</summary>
