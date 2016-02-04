@@ -1906,7 +1906,12 @@ namespace FSharp.Charting
 
                     let axisMinimums = Dictionary<PlotView, _ []>() // Can't use F# Map because PlotView, GenericChart etc. don't implement IComparable
                 
-                    plots |> Array.iter (fun x -> axisMinimums.[x] <- x.Model.Axes |> Seq.map (fun a -> a.Minimum) |> Array.ofSeq)
+                    plots |> Array.iter
+                        (
+                            fun x ->
+                                (x.ActualModel :> IPlotModel).Update(false) // This will force the creation of the default axes if necessary
+                                axisMinimums.[x] <- x.Model.Axes |> Seq.map (fun a -> a.Minimum) |> Array.ofSeq
+                        )
 
                     let getPlot n =
                         match n with
