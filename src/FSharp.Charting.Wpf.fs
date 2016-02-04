@@ -1317,7 +1317,7 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Point(data:seq<#value*#value>,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?MarkerSize) = 
+        static member Point(data:seq<#value*#value>,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?MarkerSize,?MarkerType) = 
             let defaultValue = ScatterSeries()
 
             GenericChart.Create
@@ -1331,7 +1331,7 @@ namespace FSharp.Charting
                                 ScatterChartItem(x, y, Size=(defaultArg MarkerSize 3.0), Tag=allowNull lab)
                         ),
                      
-                        ScatterSeries(DataFieldX="X", DataFieldY="Y", DataFieldSize="Size", DataFieldTag="Tag", MarkerType=MarkerType.Circle, MarkerStroke= defaultArg Color defaultValue.MarkerStroke, TrackerFormatString=if Option.isSome Labels then "{Tag:0}" else defaultValue.TrackerFormatString)
+                        ScatterSeries(DataFieldX="X", DataFieldY="Y", DataFieldSize="Size", DataFieldTag="Tag", MarkerType=(defaultArg MarkerType defaultValue.MarkerType), MarkerStroke= defaultArg Color defaultValue.MarkerStroke, TrackerFormatString=if Option.isSome Labels then "{Tag:0}" else defaultValue.TrackerFormatString)
                 )
                 |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
 
@@ -1343,8 +1343,8 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Point(data:seq<#value>,?Name,?Title,?Labels,?Color,?XTitle,?YTitle,?MarkerSize) = 
-           Chart.Point(indexData data,?Name=Name,?Title=Title,?Labels=Labels,?Color=Color,?XTitle=XTitle,?YTitle=YTitle,?MarkerSize=MarkerSize)
+        static member Point(data:seq<#value>,?Name,?Title,?Labels,?Color,?XTitle,?YTitle,?MarkerSize,?MarkerType) = 
+           Chart.Point(indexData data,?Name=Name,?Title=Title,?Labels=Labels,?Color=Color,?XTitle=XTitle,?YTitle=YTitle,?MarkerSize=MarkerSize,?MarkerType=MarkerType)
 
 #if INCOMPLETE_API
         /// <summary>Disregards the passage of time and only displays changes in prices.</summary>
