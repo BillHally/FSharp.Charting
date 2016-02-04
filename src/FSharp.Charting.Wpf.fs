@@ -1892,7 +1892,7 @@ namespace FSharp.Charting
         static member Combine charts = GenericChart.Combine charts
 
         /// Display the charts in a new WPF window
-        static member ShowAll (?IsMaximized : bool, ?IsModal : bool) =
+        static member ShowAll (?IsMaximized : bool, ?IsModal : bool, ?WindowTitle : string, ?SelectPlotsBySubtitle : bool) =
 
             let windowState = if defaultArg IsMaximized false then WindowState.Maximized else WindowState.Normal
             let isModal = defaultArg IsModal true
@@ -1939,7 +1939,7 @@ namespace FSharp.Charting
                         (fun () -> index := plots.Length - 1),
                         (fun n -> if n >= 0 && n < plots.Length then index := n)
 
-                    let window = Window(Width = width, Height = height, WindowState = windowState)
+                    let window = Window(Width = width, Height = height, WindowState = windowState, Title = defaultArg WindowTitle "F# Charting")
 
                     window.Content <-
                         let contents = StackPanel()
@@ -1951,7 +1951,20 @@ namespace FSharp.Charting
 
                         let chartIndex = TextBlock(FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=20.0, VerticalAlignment=VerticalAlignment.Center)
 
-                        let plotSelector = ComboBox(FontSize=15.0, MinWidth=250.0, Margin=Thickness(10.0), Height=25.0, VerticalAlignment=VerticalAlignment.Center, DisplayMemberPath = "ActualModel.Title", ItemsSource=plots, IsReadOnly=false, IsEditable=false, SelectedIndex = 0)
+                        let plotSelector =
+                            ComboBox
+                                (
+                                    FontSize=15.0,
+                                    MinWidth=350.0,
+                                    Margin=Thickness(10.0),
+                                    Height=25.0,
+                                    VerticalAlignment=VerticalAlignment.Center,
+                                    DisplayMemberPath = (if defaultArg SelectPlotsBySubtitle false then "ActualModel.Subtitle" else "ActualModel.Title"),
+                                    ItemsSource=plots,
+                                    IsReadOnly=false,
+                                    IsEditable=false,
+                                    SelectedIndex = 0
+                                )
 
                         let helpButton = Button(Content="Help", FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=30.0)
                         helpButton.Click.Add(fun _ -> Chart.ShowHelp window)
