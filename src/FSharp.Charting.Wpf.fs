@@ -703,8 +703,8 @@ namespace FSharp.Charting
 
 
         type GenericChart internal (model : PlotModel) =  
-            member internal this.Model = model
-            member this.Name = model.Title
+            member this.Model = model
+            member internal this.Name = model.Title
             member internal this.ChartTypeName = model.Title
 
             member val Width  : int option = None with get, set
