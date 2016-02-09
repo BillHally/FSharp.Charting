@@ -872,6 +872,7 @@ namespace FSharp.Charting
                             | :? AreaSeries as s -> s.Fill <- c 
                             | :? LineSeries as s -> s.Color <- c 
                             | :? ScatterSeries as s -> s.MarkerFill <- c 
+                            | :? ColumnSeries as s -> s.FillColor <- c
                             | _ -> ()))
 
                     Name |> Option.iter (fun t -> for s in model.Series do s.Title <- t)
