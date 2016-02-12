@@ -50,7 +50,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{77EFC808
 		docs\tools\templates\template.cshtml = docs\tools\templates\template.cshtml
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Charting.Wpf", "src\FSharp.Charting.Wpf.fsproj", "{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Charting.Wpf", "src\FSharp.Charting.Wpf\FSharp.Charting.Wpf.fsproj", "{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

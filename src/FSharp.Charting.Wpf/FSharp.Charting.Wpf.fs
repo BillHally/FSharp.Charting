@@ -761,7 +761,7 @@ namespace FSharp.Charting
 
                 match charts with
                 | []   -> GenericChart(PlotModel())
-                | [h]  -> h
+//                | [h]  -> h
                 | x ->
                     let primaryChart = GenericChart(PlotModel())
 
