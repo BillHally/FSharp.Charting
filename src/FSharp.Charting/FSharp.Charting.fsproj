@@ -40,8 +40,8 @@
     <DocumentationFile>bin\Release\FSharp.Charting.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="FSharp.Charting.fs" />
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="FSharp.Charting.fs" />
     <None Include="FSharp.Charting.fsx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

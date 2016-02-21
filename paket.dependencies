@@ -4,9 +4,9 @@ nuget FSharp.Formatting
 nuget FsXaml.Wpf
 nuget NUnit
 nuget NUnit.Runners 
-nuget OxyPlot.GtkSharp 2014.1.546
-nuget OxyPlot.Wpf 2014.1.546
-nuget OxyPlot.Core 2014.1.546
+nuget OxyPlot.GtkSharp 1.0.0-unstable1983
+nuget OxyPlot.Wpf 1.0.0-unstable1983
+nuget OxyPlot.Core 1.0.0-unstable1983
 nuget Nuget.CommandLine
 nuget FAKE
 nuget FSharp.Control.AsyncSeq

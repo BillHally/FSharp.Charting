@@ -231,9 +231,11 @@ namespace FSharp.Charting
             member __.Y = Y 
 
         /// An implementation type for items on a chart. This type should not be used directly.
-        type public AreaChartItem(X: key, Y: value) = 
-            member __.X = X 
-            member __.Y = Y 
+        type public AreaChartItem(X: key, Y: value, X2 : key, Y2 : value) = 
+            member __.X  = X 
+            member __.Y  = Y 
+            member __.X2 = X2
+            member __.Y2 = Y2
 
         /// An implementation type for items on a chart. This type should not be used directly.
         type public PieChartItem(Label: string, Value: value) = 
@@ -759,7 +761,7 @@ namespace FSharp.Charting
 
                 match charts with
                 | []   -> GenericChart(PlotModel())
-                | [h]  -> h
+//                | [h]  -> h
                 | x ->
                     let primaryChart = GenericChart(PlotModel())
 
@@ -823,21 +825,24 @@ namespace FSharp.Charting
                 ?AxisXLogarithmic : bool,
                 ?AxisXMinimum : float,
                 ?AxisXMaximum : float,
+                ?AxisXLabelFormatter : float -> string,
                 ?AxisYTitle,
                 ?AxisYEnabled : bool,
                 ?AxisYLogarithmic : bool,
                 ?AxisYMinimum : float,
                 ?AxisYMaximum : float,
+                ?AxisYLabelFormatter: float -> string,
                 ?InsideArea : bool,
                 ?LegendEnabled : bool,
                 ?LegendPosition : Position
             ) =
-                let createAxis logarithmic position =
+                let createAxis logarithmic categorical position =
                     let axis =
-                        if logarithmic then
-                            Axes.LogarithmicAxis() :> Axes.Axis
-                        else
-                            Axes.LinearAxis() :> Axes.Axis
+                        match logarithmic, categorical with
+                        |  true,  true -> failwith "Can't create a logarithmic category axis"
+                        |  true, false -> Axes.LogarithmicAxis() :> Axes.Axis
+                        | false,  true -> Axes.CategoryAxis()    :> Axes.Axis
+                        | false, false -> Axes.LinearAxis()      :> Axes.Axis
                     axis.Position <- position
 
                     axis
@@ -846,24 +851,27 @@ namespace FSharp.Charting
                     let model = ch.Model
                     let seriesIter f = for s in model.Series do f s
 
-                    let createAxis logRequired isXAxis =
-                        let axis = createAxis logRequired (if isXAxis then Axes.AxisPosition.Bottom else Axes.AxisPosition.Left)
+                    let createAxis logRequired categoryAxisRequired isXAxis =
+                        let axis = createAxis logRequired categoryAxisRequired (if isXAxis then Axes.AxisPosition.Bottom else Axes.AxisPosition.Left)
                         model.Axes.Add axis
                         axis
 
                     let ensureDefaultAxis (X) =
                         let logRequired = if X then defaultArg AxisXLogarithmic false else defaultArg AxisYLogarithmic false
 
+                        let categoryAxisRequired = if X then Option.isSome AxisXLabelFormatter else Option.isSome AxisYLabelFormatter
+
                         match model.Axes |> Seq.tryFind (fun x -> (if X then x.IsHorizontal() else x.IsVertical()) && x.IsXyAxis()) with 
                         | None   -> 
-                            createAxis logRequired X
+                            createAxis logRequired categoryAxisRequired X
                         | Some a ->
-                            match a, logRequired with
-                            | :? Axes.LogarithmicAxis, true
-                            |                       _, false -> a
-                            | _, logRequired ->
+                            match a, logRequired, categoryAxisRequired with
+                            |                       _, false, false
+                            | :? Axes.LogarithmicAxis,  true, false
+                            | :? Axes.CategoryAxis,    false,  true -> a
+                            | _, logRequired, categoryAxisRequired ->
                                 model.Axes.Remove a |> ignore
-                                createAxis logRequired X
+                                createAxis logRequired categoryAxisRequired X
 
                     let ensureDefaultXAxis () = ensureDefaultAxis true
                     let ensureDefaultYAxis () = ensureDefaultAxis false
@@ -872,6 +880,7 @@ namespace FSharp.Charting
                             | :? AreaSeries as s -> s.Fill <- c 
                             | :? LineSeries as s -> s.Color <- c 
                             | :? ScatterSeries as s -> s.MarkerFill <- c 
+                            | :? ColumnSeries as s -> s.FillColor <- c
                             | _ -> ()))
 
                     Name |> Option.iter (fun t -> for s in model.Series do s.Title <- t)
@@ -882,15 +891,17 @@ namespace FSharp.Charting
                     Subtitle |> Option.iter (fun t -> model.Subtitle <- t)
                     SubtitleFont |> Option.iter (fun f -> model.SubtitleFont <- f.Name; model.SubtitleFontSize <- f.Size; model.SubtitleFontWeight <- f.Style)
 
-                    AxisXTitle   |> Option.iter (fun t -> ensureDefaultXAxis().Title <- t)
-                    AxisXEnabled |> Option.iter (fun x -> ensureDefaultXAxis().IsAxisVisible <- x)
-                    AxisXMinimum |> Option.iter (fun x -> ensureDefaultXAxis().Minimum <- x)
-                    AxisXMaximum |> Option.iter (fun x -> ensureDefaultXAxis().Maximum <- x)
+                    AxisXTitle          |> Option.iter (fun t -> ensureDefaultXAxis().Title <- t)
+                    AxisXEnabled        |> Option.iter (fun x -> ensureDefaultXAxis().IsAxisVisible <- x)
+                    AxisXMinimum        |> Option.iter (fun x -> ensureDefaultXAxis().Minimum <- x)
+                    AxisXMaximum        |> Option.iter (fun x -> ensureDefaultXAxis().Maximum <- x)
+                    AxisXLabelFormatter |> Option.iter (fun f -> ensureDefaultXAxis().LabelFormatter <- (fun x -> f x))
 
-                    AxisYTitle   |> Option.iter (fun t -> ensureDefaultYAxis().Title <- t)
-                    AxisYEnabled |> Option.iter (fun x -> ensureDefaultXAxis().IsAxisVisible <- x)
-                    AxisYMinimum |> Option.iter (fun x -> ensureDefaultYAxis().Minimum <- x)
-                    AxisYMaximum |> Option.iter (fun x -> ensureDefaultYAxis().Maximum <- x)
+                    AxisYTitle          |> Option.iter (fun t -> ensureDefaultYAxis().Title <- t)
+                    AxisYEnabled        |> Option.iter (fun x -> ensureDefaultXAxis().IsAxisVisible <- x)
+                    AxisYMinimum        |> Option.iter (fun x -> ensureDefaultYAxis().Minimum <- x)
+                    AxisYMaximum        |> Option.iter (fun x -> ensureDefaultYAxis().Maximum <- x)
+                    AxisYLabelFormatter |> Option.iter (fun f -> ensureDefaultYAxis().LabelFormatter <- (fun x -> f x))
 
                     InsideArea |> Option.iter (fun x -> model.LegendPlacement <- (if x then LegendPlacement.Inside else LegendPlacement.Outside))
 
@@ -916,10 +927,17 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Area(data:seq<('key :> key) * #value>,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle) = 
-           GenericChart.Create(data |> listen |> mergeLabels Labels |> makeItems (fun ((k,v),_labelOpt) -> AreaChartItem(k, v)), AreaSeries(DataFieldX="X",DataFieldY="Y",Fill=AreaSeries().ActualColor))
-             |> Helpers.ApplyStaticAxis(typeof<'key>, Axes.AxisPosition.Bottom)
-             |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
+        static member Area(data:seq<(('key :> key) * #value) * (('key :> key) * #value)>,?Name,?Title,?Labels,?Color,?LineColor,?XTitle,?YTitle) = 
+            let items = data |> listen |> mergeLabels Labels |> makeItems (fun (((k,v),(k2,v2)),_labelOpt) -> AreaChartItem(k, v, k2, v2))
+
+            let series = AreaSeries(DataFieldX="X",DataFieldY="Y",DataFieldX2="X2",DataFieldY2="Y2")
+
+            Color     |> Option.iter (fun x -> series.Fill  <- x)
+            LineColor |> Option.iter (fun x -> series.Color <- x)
+
+            GenericChart.Create(items, series)
+            |> Helpers.ApplyStaticAxis(typeof<'key>, Axes.AxisPosition.Bottom)
+            |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
 
         /// <summary>Emphasizes the degree of change over time and shows the relationship of the parts to a whole.</summary>
         /// <param name="data">The data for the chart.</param>
@@ -929,8 +947,28 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Area(data:seq<#value>,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle) = 
-           Chart.Area(indexData data,?Name=Name,?Title=Title,?Labels=Labels, ?Color=Color,?XTitle=XTitle,?YTitle=YTitle)
+        static member Area(data:seq<#value * #value>,?Name,?Title,?Labels,?Color,?LineColor,?XTitle,?YTitle) = 
+            let data =
+                data
+                |> indexData
+                |> Seq.map (fun (n, (first, second)) -> (n, first), (n, second))
+
+            Chart.Area(data,?Name=Name,?Title=Title,?Labels=Labels, ?Color=Color,?LineColor=LineColor,?XTitle=XTitle,?YTitle=YTitle)
+
+        /// <summary>Emphasizes the degree of change over time and shows the relationship of the parts to a whole.</summary>
+        /// <param name="data">The data for the chart.</param>
+        /// <param name="Name">The name of the data set.</param>
+        /// <param name="Title">The title of the chart.</param>
+        /// <param name="Labels">The labels that match the data.</param>
+        /// <param name="Color">The color for the data.</param>
+        /// <param name="XTitle">The title of the X-axis.</param>
+        /// <param name="YTitle">The title of the Y-axis.</param>
+        static member Area(data:seq<#key * (#value * #value)>,?Name,?Title,?Labels,?Color,?LineColor,?XTitle,?YTitle) = 
+            let data =
+                data
+                |> Seq.map (fun (n, (first, second)) -> (n, first), (n, second))
+
+            Chart.Area(data,?Name=Name,?Title=Title,?Labels=Labels, ?Color=Color,?LineColor=LineColor,?XTitle=XTitle,?YTitle=YTitle)
 
         /// <summary>Illustrates comparisons among individual items</summary>
         /// <param name="data">The data for the chart.</param>
@@ -1274,10 +1312,21 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Line(data:seq<('key :> key) * #value>,?Name,?Title,?Color,?XTitle,?YTitle,?Thickness) = 
-           GenericChart.Create(data |> listen |> makeItems (fun (x,y) -> LineChartItem(x,y)), LineSeries(DataFieldX="X",DataFieldY="Y",StrokeThickness=defaultArg Thickness (LineSeries().StrokeThickness)))
-             |> Helpers.ApplyStaticAxis(typeof<'key>, Axes.AxisPosition.Bottom)
-             |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
+        static member Line(data:seq<('key :> key) * #value>,?Name,?Title,?Color,?XTitle,?YTitle,?Thickness,?LineStyle,?Smooth) = 
+            GenericChart.Create
+                (
+                    data |> listen |> makeItems (fun (x,y) -> LineChartItem(x,y)),
+                    LineSeries
+                        (
+                            DataFieldX = "X",
+                            DataFieldY = "Y",
+                            StrokeThickness = defaultArg Thickness (LineSeries().StrokeThickness),
+                            LineStyle = defaultArg LineStyle (LineSeries().LineStyle),
+                            Smooth = defaultArg Smooth (LineSeries().Smooth)
+                        )
+                )
+            |> Helpers.ApplyStaticAxis(typeof<'key>, Axes.AxisPosition.Bottom)
+            |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
 
         /// <summary>Illustrates trends in data with the passing of time.</summary>
         /// <param name="data">The data for the chart.</param>
@@ -1287,8 +1336,8 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Line(data:seq<#value>,?Name,?Title,?Color,?XTitle,?YTitle) = 
-           Chart.Line(indexData data,?Name=Name,?Title=Title,?Color=Color,?XTitle=XTitle,?YTitle=YTitle)
+        static member Line(data:seq<#value>,?Name,?Title,?Color,?XTitle,?YTitle,?Thickness,?LineStyle,?Smooth) = 
+           Chart.Line(indexData data,?Name=Name,?Title=Title,?Color=Color,?XTitle=XTitle,?YTitle=YTitle,?Thickness=Thickness,?LineStyle=LineStyle,?Smooth=Smooth)
 
 
         /// <summary>Shows how proportions of data, shown as pie-shaped pieces, contribute to the data as a whole.</summary>
@@ -1322,7 +1371,7 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Point(data:seq<#value*#value>,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?MarkerSize,?MarkerType) = 
+        static member Point(data:seq<#value*#value>,?Name,?Title,?Labels,?Color,?XTitle,?YTitle,?MarkerSize,?MarkerType) = 
             let defaultValue = ScatterSeries()
 
             GenericChart.Create
@@ -1336,7 +1385,16 @@ namespace FSharp.Charting
                                 ScatterChartItem(x, y, Size=(defaultArg MarkerSize 3.0), Tag=allowNull lab)
                         ),
                      
-                        ScatterSeries(DataFieldX="X", DataFieldY="Y", DataFieldSize="Size", DataFieldTag="Tag", MarkerType=(defaultArg MarkerType defaultValue.MarkerType), MarkerStroke= defaultArg Color defaultValue.MarkerStroke, TrackerFormatString=if Option.isSome Labels then "{Tag:0}" else defaultValue.TrackerFormatString)
+                        ScatterSeries
+                            (
+                                DataFieldX="X",
+                                DataFieldY="Y",
+                                DataFieldSize="Size",
+                                DataFieldTag="Tag",
+                                MarkerType=(defaultArg MarkerType defaultValue.MarkerType),
+                                MarkerStroke=defaultArg Color defaultValue.MarkerStroke,
+                                TrackerFormatString=if Option.isSome Labels then "{Tag:0}" else defaultValue.TrackerFormatString
+                            )
                 )
                 |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
 
@@ -2150,13 +2208,13 @@ namespace FSharp.Charting
         /// <param name="TitleColor">The color of the title of the axis</param>
         /// <param name="Tooltip">The tooltip to use for the axis</param>
         static member WithXAxis
-            (?Enabled, ?Title, ?Max, ?Min, ?Log (*, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
+            (?Enabled, ?Title, ?Max, ?Min, ?Log, ?LabelFormatter (*, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
                 ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip *)) =
 
             // TODO: let titleFont = StyleHelper.OptionalFont(?Name=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle) 
 
             fun (ch : #GenericChart) ->
-                ch |> Helpers.ApplyStyles(?AxisXLogarithmic=Log, ?AxisXEnabled=Enabled, (* TODO: ?AxisXArrowStyle=ArrowStyle, ?AxisXLabelStyle=LabelStyle, (* ?AxisXIsMarginVisible=IsMarginVisible, *)*) ?AxisXMaximum=Max, ?AxisXMinimum=Min, (* TODO: , ?AxisXMajorGrid=MajorGrid, ?AxisXMinorGrid=MinorGrid, ?AxisXMajorTickMark=MajorTickMark, ?AxisXMinorTickMark=MinorTickMark,  *)
+                ch |> Helpers.ApplyStyles(?AxisXLogarithmic=Log, ?AxisXEnabled=Enabled, ?AxisXLabelFormatter=LabelFormatter,(* TODO: ?AxisXArrowStyle=ArrowStyle, ?AxisXLabelStyle=LabelStyle, (* ?AxisXIsMarginVisible=IsMarginVisible, *)*) ?AxisXMaximum=Max, ?AxisXMinimum=Min, (* TODO: , ?AxisXMajorGrid=MajorGrid, ?AxisXMinorGrid=MinorGrid, ?AxisXMajorTickMark=MajorTickMark, ?AxisXMinorTickMark=MinorTickMark,  *)
                                         ?AxisXTitle=Title (* TODO: , ?AxisXTitleAlignment=TitleAlignment, ?AxisXTitleFont=titleFont, ?AxisXTitleForeColor=TitleColor, ?AxisXToolTip=ToolTip *))
 
             /// <summary>Apply styling to the Y Axis</summary>
@@ -2177,13 +2235,13 @@ namespace FSharp.Charting
             /// <param name="TitleColor">The color of the title of the axis</param>
             /// <param name="Tooltip">The tooltip to use for the axis</param>
         static member WithYAxis
-            (?Enabled, ?Title, ?Max, ?Min, ?Log) (*, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
-                ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip)*) =
+            (?Enabled, ?Title, ?Max, ?Min, ?Log, ?LabelFormatter (*, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
+                ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip)*)) =
 
             // TODO: let titleFont = StyleHelper.OptionalFont(?Name=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle) 
 
             fun (ch : #GenericChart) ->
-                ch |> Helpers.ApplyStyles(?AxisYLogarithmic=Log,?AxisYEnabled=Enabled, (* TODO: ?AxisYArrowStyle=ArrowStyle,  ?AxisYLabelStyle=LabelStyle, (* ?AxisYIsMarginVisible=IsMarginVisible, *)*) ?AxisYMaximum=Max, ?AxisYMinimum=Min, (* TODO: , ?AxisYMajorGrid=MajorGrid, ?AxisYMinorGrid=MinorGrid, ?AxisYMajorTickMark=MajorTickMark, ?AxisYMinorTickMark=MinorTickMark, *) ?AxisYTitle=Title(* TODO: , ?AxisYTitleAlignment=TitleAlignment, ?AxisYTitleFont=titleFont, ?AxisYTitleForeColor=TitleColor, ?AxisYToolTip=ToolTip *))
+                ch |> Helpers.ApplyStyles(?AxisYLogarithmic=Log,?AxisYEnabled=Enabled, ?AxisYLabelFormatter=LabelFormatter,(* TODO: ?AxisYArrowStyle=ArrowStyle,  ?AxisYLabelStyle=LabelStyle, (* ?AxisYIsMarginVisible=IsMarginVisible, *)*) ?AxisYMaximum=Max, ?AxisYMinimum=Min, (* TODO: , ?AxisYMajorGrid=MajorGrid, ?AxisYMinorGrid=MinorGrid, ?AxisYMajorTickMark=MajorTickMark, ?AxisYMinorTickMark=MinorTickMark, *) ?AxisYTitle=Title(* TODO: , ?AxisYTitleAlignment=TitleAlignment, ?AxisYTitleFont=titleFont, ?AxisYTitleForeColor=TitleColor, ?AxisYToolTip=ToolTip *))
 
         /// <summary>Apply content and styling to the title, if present</summary>
         /// <param name="InsideArea">If false, locates the title outside the chart area</param>
