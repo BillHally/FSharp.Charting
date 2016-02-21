@@ -1,0 +1,147 @@
+﻿<UserControl
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+  xmlns:oxyplot="clr-namespace:OxyPlot;assembly=OxyPlot"
+  xmlns:oxyplotwpf="clr-namespace:OxyPlot.Wpf;assembly=OxyPlot.Wpf"
+  xmlns:local="clr-namespace:FSharp.Charting.Controls"
+  xmlns:wpfc="clr-namespace:WpfControls;assembly=WpfControls"
+  mc:Ignorable="d" 
+  d:DesignHeight="800"
+  d:DesignWidth="1200"
+  >
+  <Grid>
+    <Grid.Resources>
+      <ResourceDictionary>
+        <ResourceDictionary.MergedDictionaries>
+          <ResourceDictionary Source="pack://application:,,,/WpfControls;component/editors/autocompletetextbox/themes/generic.xaml"/>
+        </ResourceDictionary.MergedDictionaries>
+        <Style TargetType="wpfc:AutoCompleteTextBox">
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="{x:Type wpfc:AutoCompleteTextBox}">
+                <Border BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Background="{TemplateBinding Background}"
+                            CornerRadius="0">
+                  <Grid>
+                    <DockPanel>
+                      <ContentPresenter ContentSource="Icon"
+                                                  x:Name="PART_Icon"
+                                                  Visibility="{TemplateBinding IconVisibility}" />
+                      <Grid>
+                        <TextBlock x:Name="PART_Watermark"
+                                               Text="{TemplateBinding Watermark}"
+                                               Visibility="Collapsed"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Left"
+                                               Focusable="False"
+                                               Foreground="Gray"
+                                               Margin="3,0" />
+                        <TextBox x:Name="PART_Editor"
+                                             HorizontalAlignment="Stretch"
+                                             VerticalAlignment="Center"
+                                             Style="{StaticResource ResourceKey=TransparentTextBoxStyle}"
+                                             Text="{Binding Path=Text, RelativeSource={RelativeSource Mode=TemplatedParent}, Mode=TwoWay}" />
+                      </Grid>
+                    </DockPanel>
+                    <Popup x:Name="PART_Popup"
+                                   IsOpen="{Binding Path=IsDropDownOpen, RelativeSource={RelativeSource Mode=TemplatedParent},Mode=TwoWay}"
+                                   Width="{TemplateBinding ActualWidth}"
+                                   HorizontalOffset="0"
+                                   MinHeight="25"
+                                   MaxHeight="600"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Slide"
+                                   Focusable="False">
+                      <Border Background="White"
+                                        BorderThickness="1"
+                                        BorderBrush="Gray"
+                                        CornerRadius="0"
+                                        Padding="2">
+                        <Grid>
+                          <ListBox x:Name="PART_Selector"
+                                                 ItemTemplate="{TemplateBinding ItemTemplate}"
+                                                 Focusable="False"
+                                                 BorderThickness="0"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
+                          </ListBox>
+                          <Border Visibility="{Binding Path=IsLoading, RelativeSource={RelativeSource Mode=TemplatedParent}, Converter={StaticResource ResourceKey=BoolToVisConverter}}">
+                            <ContentPresenter ContentSource="LoadingContent"/>
+                          </Border>
+                        </Grid>
+                      </Border>
+                    </Popup>
+
+                  </Grid>
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="Text"
+                                 Value=""
+                                 SourceName="PART_Editor">
+                    <Setter Property="Visibility"
+                                    Value="Visible"
+                                    TargetName="PART_Watermark" />
+                  </Trigger>
+                  <Trigger Property="IconPlacement"
+                                 Value="Left">
+                    <Setter Property="DockPanel.Dock"
+                                    Value="Left"
+                                    TargetName="PART_Icon" />
+                  </Trigger>
+                  <Trigger Property="IconPlacement"
+                                 Value="Right">
+                    <Setter Property="DockPanel.Dock"
+                                    Value="Right"
+                                    TargetName="PART_Icon" />
+                  </Trigger>
+                  <Trigger Property="Validation.HasError" Value="True">
+                    <Setter Property="BorderBrush"
+                                    Value="Red"/>
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+      </ResourceDictionary>
+    </Grid.Resources>
+    <StackPanel>
+
+      <StackPanel Orientation="Horizontal">
+        <Button FontSize="15" FontWeight="Bold" Width="50" Height="30" VerticalAlignment="Center" Margin="10">&lt;</Button>
+        <Button FontSize="15" FontWeight="Bold" Width="50" Height="30" VerticalAlignment="Center" Margin="10">&gt;</Button>
+        <TextBlock FontSize="15" Width="100" Margin="10" Height="20" VerticalAlignment="Center" />
+
+        <ComboBox
+            FontSize="15"
+            MinWidth="350"
+            Margin="10"
+            Height="25"
+            VerticalAlignment="Center"
+            DisplayMemberPath="Value.Title"
+            ItemsSource="{Binding Plots}"
+            IsReadOnly="True"
+            IsEditable="True"
+            SelectedItem="{Binding SelectedPlot}"
+            SelectedValuePath="Value.Title"
+            
+            />
+
+        <wpfc:AutoCompleteTextBox
+            Provider="{Binding Suggestions}"
+            Width="300"
+            Height="30"
+            Watermark="Search..."
+            SelectedItem="{Binding SelectedSearch, Mode=TwoWay}"
+            >
+        </wpfc:AutoCompleteTextBox>
+
+      </StackPanel>
+
+      <oxyplotwpf:PlotView Model="{Binding SelectedPlot.Value}" Height="600" Width="900"/>
+    </StackPanel>
+  </Grid>
+</UserControl>

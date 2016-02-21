@@ -1,6 +1,7 @@
 source https://nuget.org/api/v2
 
 nuget FSharp.Formatting
+nuget FsXaml.Wpf
 nuget NUnit
 nuget NUnit.Runners 
 nuget OxyPlot.GtkSharp 2014.1.546
@@ -9,3 +10,7 @@ nuget OxyPlot.Core 2014.1.546
 nuget Nuget.CommandLine
 nuget FAKE
 nuget FSharp.Control.AsyncSeq
+nuget FSharp.Control.Reactive
+nuget Rx-Xaml
+nuget FSharp.ViewModule.Core
+nuget WpfControls.AutoCompleteTextBox

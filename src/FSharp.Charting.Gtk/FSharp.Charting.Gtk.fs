@@ -8,22 +8,8 @@ namespace FSharp.Charting
     open System.Collections.ObjectModel
     open System.Reflection
     open System.Runtime.InteropServices
-    open System.Windows.Input
     open OxyPlot
     open OxyPlot.Series
-    open System.Windows
-    open System.Windows.Controls
-
-    type PlotView = OxyPlot.Wpf.PlotView
-    type FontStyle = float
-
-    type Position =
-        | TopLeft
-        | TopCenter
-        | TopRight
-        | BottomLeft
-        | BottomCenter
-        | BottomRight
 
     type internal INotifyEnumerableInternal<'T> =
         inherit IEnumerable<'T>
@@ -557,45 +543,6 @@ namespace FSharp.Charting
             | Close = 2
 
 #endif
-        // Default font used when creating styles, titles, and legends
-        type Font =
-            {
-                Name : string
-                Size : float // In points
-                Style : float
-            }
-
-        let internal DefaultFontForTitles = { Name = "Calibri"; Size = 16.0; Style = OxyPlot.FontWeights.Normal }
-        let internal DefaultFontForAxisLabels = { DefaultFontForTitles with Size = 12.0 }
-        let internal DefaultFontForOthers = { Name = "Arial Narrow"; Size = 10.0; Style = OxyPlot.FontWeights.Normal }
-        let internal DefaultFontForLegend = DefaultFontForOthers
-        let internal DefaultFontForLabels = DefaultFontForOthers
-        let internal DefaultExtraMarginForTitleIfPresent = 5  // default extra margin percentage
-        let internal DefaultExtraMarginForLegendIfPresent = 15  // default extra margin percentage
-        let internal DefaultMarginForEachChart = (2.0, 2.0, 2.0, 2.0)
-
-        type internal StyleHelper =
-
-            static member internal Font(?Name:string, ?Size:float, ?Style:FontStyle) =
-                let fontSize = 
-                    match Size with
-                    | Some size -> size
-                    | None -> DefaultFontForOthers.Size
-                let fontStyle = 
-                    match Style with
-                    | Some style -> style
-                    | None -> DefaultFontForOthers.Style
-                let font =
-                    match Name with
-                    | Some name -> { Name = name; Size = fontSize; Style = fontStyle }
-                    | None -> { Name = DefaultFontForOthers.Name; Size = fontSize; Style = fontStyle }
-                font
-
-            static member internal OptionalFont(?Name:string, ?Size:float, ?Style:FontStyle) =
-                match Name, Size, Style with 
-                | None,None,None -> None
-                | _ -> Some (StyleHelper.Font(?Name=Name,?Size=Size,?Style=Style))
-
         // ----------------------------------------------------------------------------------
         // Utilities for converting data
 
@@ -703,15 +650,12 @@ namespace FSharp.Charting
 
 
         type GenericChart internal (model : PlotModel) =  
-            member this.Model = model
+            member internal this.Model = model
             member internal this.Name = model.Title
             member internal this.ChartTypeName = model.Title
 
-            member val Width  : int option = None with get, set
-            member val Height : int option = None with get, set
-
             static member internal Create (data:seq<_>, series : ItemsSeries) = 
-                let model = PlotModel()
+                let model = new PlotModel()
                 model.Series.Add(series)
                 series.ItemsSource <- data
                 let chart = GenericChart(model)
@@ -754,29 +698,7 @@ namespace FSharp.Charting
             member public x.SaveChartAs(filename : string, format : ChartImageFormat) =
                 x.Chart.SaveImage(filename, format  |> int |> enum)
 #endif
-            static member Combine (charts : #seq<GenericChart>) =
-                let charts = charts |> List.ofSeq
-
-                match charts with
-                | []   -> GenericChart(PlotModel())
-                | [h]  -> h
-                | x ->
-                    let primaryChart = GenericChart(PlotModel())
-
-                    x |> List.iter
-                        (
-                            fun x ->
-                                x.Model.Series
-                                |> List.ofSeq // So that when we iterate on the next line, we're not iterating the original sequence - because we're going to modify that
-                                |> List.iter
-                                    (
-                                        fun series ->
-                                            x.Model.Series.Remove series |> ignore
-                                            primaryChart.Model.Series.Add series
-                                    )
-                        )
-
-                    primaryChart
+            
 
     open ChartTypes
 
@@ -801,103 +723,29 @@ namespace FSharp.Charting
             | _ -> ()
             ch)
 
-        static member ToLegendPosition =
-            function
-            | TopLeft      -> LegendPosition.TopLeft
-            | TopCenter    -> LegendPosition.TopCenter
-            | TopRight     -> LegendPosition.TopRight
-            | BottomLeft   -> LegendPosition.BottomLeft
-            | BottomCenter -> LegendPosition.BottomCenter
-            | BottomRight  -> LegendPosition.BottomRight
-
-        static member ApplyStyles
-            (
-                ?Color,
-                ?Name,
-                ?Title,
-                ?Subtitle,
-                ?TitleFont:Font,
-                ?SubtitleFont:Font,
-                ?AxisXTitle,
-                ?AxisXEnabled : bool,
-                ?AxisXLogarithmic : bool,
-                ?AxisXMinimum : float,
-                ?AxisXMaximum : float,
-                ?AxisYTitle,
-                ?AxisYEnabled : bool,
-                ?AxisYLogarithmic : bool,
-                ?AxisYMinimum : float,
-                ?AxisYMaximum : float,
-                ?InsideArea : bool,
-                ?LegendEnabled : bool,
-                ?LegendPosition : Position
-            ) =
-                let createAxis logarithmic position =
-                    let axis =
-                        if logarithmic then
-                            Axes.LogarithmicAxis() :> Axes.Axis
-                        else
-                            Axes.LinearAxis() :> Axes.Axis
-                    axis.Position <- position
-
-                    axis
-
-                fun (ch:('T :> GenericChart)) -> 
-                    let model = ch.Model
-                    let seriesIter f = for s in model.Series do f s
-
-                    let createAxis logRequired isXAxis =
-                        let axis = createAxis logRequired (if isXAxis then Axes.AxisPosition.Bottom else Axes.AxisPosition.Left)
-                        model.Axes.Add axis
-                        axis
-
-                    let ensureDefaultAxis (X) =
-                        let logRequired = if X then defaultArg AxisXLogarithmic false else defaultArg AxisYLogarithmic false
-
-                        match model.Axes |> Seq.tryFind (fun x -> (if X then x.IsHorizontal() else x.IsVertical()) && x.IsXyAxis()) with 
-                        | None   -> 
-                            createAxis logRequired X
-                        | Some a ->
-                            match a, logRequired with
-                            | :? Axes.LogarithmicAxis, true
-                            |                       _, false -> a
-                            | _, logRequired ->
-                                model.Axes.Remove a |> ignore
-                                createAxis logRequired X
-
-                    let ensureDefaultXAxis () = ensureDefaultAxis true
-                    let ensureDefaultYAxis () = ensureDefaultAxis false
-
-                    Color |> Option.iter (fun c -> seriesIter (function 
-                            | :? AreaSeries as s -> s.Fill <- c 
-                            | :? LineSeries as s -> s.Color <- c 
-                            | :? ScatterSeries as s -> s.MarkerFill <- c 
-                            | _ -> ()))
-
-                    Name |> Option.iter (fun t -> for s in model.Series do s.Title <- t)
-
-                    Title |> Option.iter (fun t -> model.Title <- t)
-                    TitleFont |> Option.iter (fun f -> model.TitleFont <- f.Name; model.TitleFontSize <- f.Size; model.TitleFontWeight <- f.Style)
-
-                    Subtitle |> Option.iter (fun t -> model.Subtitle <- t)
-                    SubtitleFont |> Option.iter (fun f -> model.SubtitleFont <- f.Name; model.SubtitleFontSize <- f.Size; model.SubtitleFontWeight <- f.Style)
-
-                    AxisXTitle   |> Option.iter (fun t -> ensureDefaultXAxis().Title <- t)
-                    AxisXEnabled |> Option.iter (fun x -> ensureDefaultXAxis().IsAxisVisible <- x)
-                    AxisXMinimum |> Option.iter (fun x -> ensureDefaultXAxis().Minimum <- x)
-                    AxisXMaximum |> Option.iter (fun x -> ensureDefaultXAxis().Maximum <- x)
-
-                    AxisYTitle   |> Option.iter (fun t -> ensureDefaultYAxis().Title <- t)
-                    AxisYEnabled |> Option.iter (fun x -> ensureDefaultXAxis().IsAxisVisible <- x)
-                    AxisYMinimum |> Option.iter (fun x -> ensureDefaultYAxis().Minimum <- x)
-                    AxisYMaximum |> Option.iter (fun x -> ensureDefaultYAxis().Maximum <- x)
-
-                    InsideArea |> Option.iter (fun x -> model.LegendPlacement <- (if x then LegendPlacement.Inside else LegendPlacement.Outside))
-
-                    LegendEnabled |> Option.iter (fun x -> model.IsLegendVisible <- x)
-                    LegendPosition |> Option.iter (fun x -> model.LegendPosition <- Helpers.ToLegendPosition x)
-
-                    ch
+        static member ApplyStyles(?Color, ?Name, ?Title, ?AxisXTitle, ?AxisYTitle) = (fun (ch:('T :> GenericChart)) -> 
+          
+            let model = ch.Model
+            let seriesIter f = for s in model.Series do f s
+            let ensureDefaultAxis (X) =
+                match model.Axes |> Seq.tryFind (fun x -> (if X then x.IsHorizontal() else x.IsVertical()) && x.IsXyAxis()) with 
+                | None -> 
+                    let axis = Axes.LinearAxis(Position = if X then Axes.AxisPosition.Bottom else Axes.AxisPosition.Left)
+                    model.Axes.Add axis
+                    axis :> Axes.Axis
+                | Some a -> a
+            let ensureDefaultXAxis () = ensureDefaultAxis true
+            let ensureDefaultYAxis () = ensureDefaultAxis false
+            Color |> Option.iter (fun c -> seriesIter (function 
+                 | :? AreaSeries as s -> s.Fill <- c 
+                 | :? LineSeries as s -> s.Color <- c 
+                 // TODO: ScatterSeries color | :? ScatterSeries as s -> s. <- c 
+                 | _ -> ()))
+            Name |> Option.iter (fun t -> for s in model.Series do s.Title <- t)
+            Title |> Option.iter (fun t -> model.Title <- t)
+            AxisXTitle |> Option.iter (fun t -> ensureDefaultXAxis().Title <- t)
+            AxisYTitle |> Option.iter (fun t -> ensureDefaultYAxis().Title <- t)
+            ch)
 
 
     /// Provides a set of static methods for creating charts.
@@ -1274,8 +1122,8 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Line(data:seq<('key :> key) * #value>,?Name,?Title,?Color,?XTitle,?YTitle,?Thickness) = 
-           GenericChart.Create(data |> listen |> makeItems (fun (x,y) -> LineChartItem(x,y)), LineSeries(DataFieldX="X",DataFieldY="Y",StrokeThickness=defaultArg Thickness (LineSeries().StrokeThickness)))
+        static member Line(data:seq<('key :> key) * #value>,?Name,?Title,?Color,?XTitle,?YTitle) = 
+           GenericChart.Create(data |> listen |> makeItems (fun (x,y) -> LineChartItem(x,y)), LineSeries(DataFieldX="X",DataFieldY="Y"))
              |> Helpers.ApplyStaticAxis(typeof<'key>, Axes.AxisPosition.Bottom)
              |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
 
@@ -1322,23 +1170,9 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Point(data:seq<#value*#value>,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?MarkerSize,?MarkerType) = 
-            let defaultValue = ScatterSeries()
-
-            GenericChart.Create
-                (
-                    data
-                    |> listen
-                    |> mergeLabels Labels
-                    |> makeItems
-                        (
-                            fun ((x, y), lab) ->
-                                ScatterChartItem(x, y, Size=(defaultArg MarkerSize 3.0), Tag=allowNull lab)
-                        ),
-                     
-                        ScatterSeries(DataFieldX="X", DataFieldY="Y", DataFieldSize="Size", DataFieldTag="Tag", MarkerType=(defaultArg MarkerType defaultValue.MarkerType), MarkerStroke= defaultArg Color defaultValue.MarkerStroke, TrackerFormatString=if Option.isSome Labels then "{Tag:0}" else defaultValue.TrackerFormatString)
-                )
-                |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
+        static member Point(data:seq<#value*#value>,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?MarkerSize) = 
+           GenericChart.Create(data |> listen |> mergeLabels Labels |> makeItems (fun ((x,y),lab) -> ScatterChartItem(x,y,Size=3.0,Tag=allowNull lab)), ScatterSeries(DataFieldX="X",DataFieldY="Y",DataFieldSize="Size",DataFieldTag="Tag",MarkerType=MarkerType.Circle, MarkerStroke= defaultArg Color (ScatterSeries().MarkerStroke), MarkerSize= defaultArg MarkerSize (ScatterSeries().MarkerSize)))
+             |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
 
         /// <summary>Uses points to represent data points.</summary>
         /// <param name="data">The data for the chart.</param>
@@ -1348,8 +1182,8 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member Point(data:seq<#value>,?Name,?Title,?Labels,?Color,?XTitle,?YTitle,?MarkerSize,?MarkerType) = 
-           Chart.Point(indexData data,?Name=Name,?Title=Title,?Labels=Labels,?Color=Color,?XTitle=XTitle,?YTitle=YTitle,?MarkerSize=MarkerSize,?MarkerType=MarkerType)
+        static member Point(data:seq<#value>,?Name,?Title,?Labels,?Color,?XTitle,?YTitle,?MarkerSize) = 
+           Chart.Point(indexData data,?Name=Name,?Title=Title,?Labels=Labels,?Color=Color,?XTitle=XTitle,?YTitle=YTitle,?MarkerSize=MarkerSize)
 
 #if INCOMPLETE_API
         /// <summary>Disregards the passage of time and only displays changes in prices.</summary>
@@ -1840,374 +1674,6 @@ namespace FSharp.Charting
 
 
 #endif
-
-        static member private GetOptionalWidth  width  = defaultArg width  700
-        static member private GetOptionalHeight height = defaultArg height 500
-
-        static member private ShowHelp window =
-            let helpWindow = Window(Title = "FSharp Charting Help", ShowInTaskbar = false, Owner = window, SizeToContent = SizeToContent.WidthAndHeight)
-            helpWindow.WindowStartupLocation <- WindowStartupLocation.CenterOwner
-
-            helpWindow.Content <-
-                let contents = Grid(Margin=Thickness(20.0))
-                contents.ColumnDefinitions.Add(ColumnDefinition())
-                contents.ColumnDefinitions.Add(ColumnDefinition())
-                contents.ShowGridLines <- true
-
-                let add shortcuts explanation =
-
-                    let row = contents.RowDefinitions.Count
-                    let shortcuts = (TextBlock(FontSize=15.0, Text = shortcuts, HorizontalAlignment = HorizontalAlignment.Right, FontWeight = FontWeights.Bold, Margin=Thickness(10.0)))
-                    let explanation = (TextBlock(FontSize=15.0, Text = explanation, Margin=Thickness(10.0)))
-
-                    Grid.SetRow(shortcuts, row)
-                    Grid.SetRow(explanation, row)
-
-                    Grid.SetColumn(shortcuts, 0)
-                    Grid.SetColumn(explanation, 1)
-
-                    contents.Children.Add shortcuts |> ignore
-                    contents.Children.Add explanation |> ignore
-
-                    contents.RowDefinitions.Add (RowDefinition())
-
-                add "'H'"                                                  "Show help"
-                add "'A' or Home"                                          "Reset axes"
-                add "Right mouse button"                                   "Drag plot"
-                add "Left mouse button"                                    "Track points in a series"
-                add "Mouse wheel forwards / backwards"                     "Zoom in / out"
-                add "Mouse wheel, plus Ctrl"                               "Zoom with fine control"
-                add "Add or PageUp, Subtract or PageDown"                  "Zoom in / out"
-                add "Add or PageUp, Subtract or PageDown, plus Ctrl"       "Zoom with fine control"
-                add "Middle mouse button or Right mouse button, plus Ctrl" "Zoom rectangle"
-                add "Ctrl + Left"                                          "Previous chart"
-                add "Ctrl + Right"                                          "Next chart"
-                add "Ctrl + Alt + Left"                                    "First chart"
-                add "Ctrl + Alt + Right"                                   "Last chart"
-                add "'Z'"                                                  "Toggle origin (changes what \"Reset axes\" resets to)"
-                contents
-
-            helpWindow.ShowDialog() |> ignore
-
-        static member Combine charts = GenericChart.Combine charts
-
-        /// Display the charts in a new WPF window
-        static member ShowAll (?IsMaximized : bool, ?IsModal : bool, ?WindowTitle : string, ?SelectPlotsBySubtitle : bool) =
-
-            let windowState = if defaultArg IsMaximized false then WindowState.Maximized else WindowState.Normal
-            let isModal = defaultArg IsModal true
-
-            let toPlotView (ch : #GenericChart) = PlotView(Model = ch.Model)
-
-            fun (charts : #seq<#GenericChart>) ->
-
-                let charts = Array.ofSeq charts
-
-                if charts.Length > 0 then
-                    let width  = System.Windows.SystemParameters.FullPrimaryScreenWidth  / 2.0
-                    let height = System.Windows.SystemParameters.FullPrimaryScreenHeight / 2.0
-
-                    let plots = charts |> Array.map toPlotView
-
-                    let axisMinimums = Dictionary<PlotView, _ []>() // Can't use F# Map because PlotView, GenericChart etc. don't implement IComparable
-                
-                    plots |> Array.iter
-                        (
-                            fun x ->
-                                (x.ActualModel :> IPlotModel).Update(false) // This will force the creation of the default axes if necessary
-                                axisMinimums.[x] <- x.Model.Axes |> Seq.map (fun a -> a.Minimum) |> Array.ofSeq
-                        )
-
-                    let getPlot n =
-                        match n with
-                        | n when n < 0 -> 0
-                        | n when n >= plots.Length -> plots.Length - 1
-                        | n -> n
-                        |> (
-                            function
-                            | n when n >= 0 && n < plots.Length -> Some plots.[n]
-                            | _ -> None
-                           )
-
-                    let getCurrentPlotIndex, decrementPlotIndex, incrementPlotIndex, setFirstPlotIndex, setLastPlotIndex, setCurrentPlotIndex =
-                        let index = ref 0
-
-                        (fun () -> !index),
-                        (fun () -> if !index > 0 then decr index),
-                        (fun () -> if !index < plots.Length - 1 then incr index),
-                        (fun () -> index := 0),
-                        (fun () -> index := plots.Length - 1),
-                        (fun n -> if n >= 0 && n < plots.Length then index := n)
-
-                    let window = Window(Width = width, Height = height, WindowState = windowState, Title = defaultArg WindowTitle "F# Charting")
-
-                    window.Content <-
-                        let contents = StackPanel()
-
-                        let buttons = StackPanel(Orientation=Orientation.Horizontal)
-
-                        let decrementButton = Button(Content="<", FontSize = 15.0, FontWeight = FontWeights.Bold, Width=50.0, Height=30.0, VerticalContentAlignment=VerticalAlignment.Center, Margin=Thickness(10.0))
-                        let incrementButton = Button(Content=">", FontSize = 15.0, FontWeight = FontWeights.Bold, Width=50.0, Height=30.0, VerticalContentAlignment=VerticalAlignment.Center, Margin=Thickness(10.0))
-
-                        let chartIndex = TextBlock(FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=20.0, VerticalAlignment=VerticalAlignment.Center)
-
-                        let plotSelector =
-                            ComboBox
-                                (
-                                    FontSize=15.0,
-                                    MinWidth=350.0,
-                                    Margin=Thickness(10.0),
-                                    Height=25.0,
-                                    VerticalAlignment=VerticalAlignment.Center,
-                                    DisplayMemberPath = (if defaultArg SelectPlotsBySubtitle false then "ActualModel.Subtitle" else "ActualModel.Title"),
-                                    ItemsSource=plots,
-                                    IsReadOnly=false,
-                                    IsEditable=false,
-                                    SelectedIndex = 0
-                                )
-
-                        let helpButton = Button(Content="Help", FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=30.0)
-                        helpButton.Click.Add(fun _ -> Chart.ShowHelp window)
-
-                        let updateDisplay() =
-                            let currentIndex = getCurrentPlotIndex()
-                            chartIndex.Text <- sprintf "%d of %d" (currentIndex + 1) plots.Length
-                            plotSelector.SelectedIndex <- currentIndex
-                
-                        let decrementPlotIndex  = decrementPlotIndex  >> updateDisplay
-                        let incrementPlotIndex  = incrementPlotIndex  >> updateDisplay
-                        let setFirstPlotIndex   = setFirstPlotIndex   >> updateDisplay
-                        let setLastPlotIndex    = setLastPlotIndex    >> updateDisplay
-                        let setCurrentPlotIndex = setCurrentPlotIndex >> updateDisplay 
-
-                        updateDisplay()
-
-                        buttons.Children.Add decrementButton |> ignore
-                        buttons.Children.Add incrementButton |> ignore
-                        buttons.Children.Add chartIndex      |> ignore
-                        buttons.Children.Add plotSelector    |> ignore
-                        buttons.Children.Add helpButton      |> ignore
-
-                        contents.Children.Add buttons |> ignore
-
-                        let border = Border()
-                        contents.Children.Add border |> ignore
-                        border.Child <- plots.[0]
-
-                        let getCurrentPlot () = getPlot (getCurrentPlotIndex())
-
-                        let resizePlot () =
-                            match getCurrentPlot () with
-                            | Some x ->
-                                x.Width  <- max 100.0 (window.ActualWidth  - 100.0)
-                                x.Height <- max 100.0 (window.ActualHeight - 100.0)
-                            | None -> ()
-
-                        let givePlotKeyboardFocus () = getCurrentPlot () |> Option.iter (fun x -> x.Focus() |> ignore)
-
-                        let viewCurrentPlot () =
-                            match getCurrentPlot () with
-                            | Some x ->
-                                border.Child <- x
-                                resizePlot ()
-                                givePlotKeyboardFocus ()
-                            | None -> ()
-
-                        let toggleOrigin =
-                            let showOrigin = ref false // So on the initial invocation it toggles to true
-
-                            fun () ->
-                                showOrigin := not !showOrigin
-
-                                match getCurrentPlot () with
-                                | None -> ()
-                                | Some p ->
-                                    if showOrigin.Value then
-                                        p.Model.Axes |> Seq.iter (fun a -> a.Minimum <- 0.0)
-                                    else
-                                        let ms = axisMinimums.[p]
-                                        p.Model.Axes |> Seq.iteri (fun i a -> a.Minimum <- ms.[i])
-
-                                    p.ActualController.HandleKeyDown(p, OxyKeyEventArgs(Key = OxyKey.A)) |> ignore
-
-                        let goToFirstPlot       = setFirstPlotIndex  >> viewCurrentPlot
-                        let goToPreviousPlot    = decrementPlotIndex >> viewCurrentPlot
-                        let goToNextPlot        = incrementPlotIndex >> viewCurrentPlot
-                        let goToLastPlot        = setLastPlotIndex   >> viewCurrentPlot
-                        let setCurrentPlotIndex = setCurrentPlotIndex >> viewCurrentPlot
-
-                        decrementButton.Click.Add (ignore >> goToPreviousPlot)
-                        incrementButton.Click.Add (ignore >> goToNextPlot)
-                        plotSelector.SelectionChanged.Add(fun _ -> setCurrentPlotIndex plotSelector.SelectedIndex)
-
-
-                        window.SizeChanged.Add (ignore >> resizePlot) // Update the size when the window is resized
-                        window.StateChanged.Add(ignore >> resizePlot) // Update the size when the window is maximized etc.
-
-                        window.PreviewKeyUp.Add
-                            (
-                                fun x ->
-                                    x.Handled <-
-                                        match x.Key with
-                                        | System.Windows.Input.Key.Left  when x.KeyboardDevice.Modifiers = ModifierKeys.Control -> goToPreviousPlot (); true
-                                        | System.Windows.Input.Key.Right when x.KeyboardDevice.Modifiers = ModifierKeys.Control -> goToNextPlot     (); true
-                                        | System.Windows.Input.Key.Left  when x.KeyboardDevice.Modifiers = (ModifierKeys.Alt ||| ModifierKeys.Control) -> goToFirstPlot (); true
-                                        | System.Windows.Input.Key.Right when x.KeyboardDevice.Modifiers = (ModifierKeys.Alt ||| ModifierKeys.Control) -> goToLastPlot  (); true
-                                        | System.Windows.Input.Key.Z     -> toggleOrigin (); true
-                                        | _ -> false
-                            )
-
-                        // initialize
-                        resizePlot ()
-                        givePlotKeyboardFocus ()
-
-                        contents
-
-
-                    if isModal then
-                        window.ShowDialog() |> ignore
-                    else
-                        window.Show()
-
-        /// Display the chart in a new WPF window
-        static member Show (?IsMaximized : bool, ?IsModal : bool) = fun (ch : #GenericChart) -> Chart.ShowAll (?IsMaximized=IsMaximized, ?IsModal=IsModal) [ch]
-
-        static member SavePng (fileName : string, ?Width : int, ?Height : int) =
-            let width  = Chart.GetOptionalWidth  Width 
-            let height = Chart.GetOptionalHeight Height
-
-            let fileName = if fileName.ToLowerInvariant().EndsWith(".png") then fileName else sprintf "%s.png" fileName
-
-            fun (ch : #GenericChart) ->
-                use stream = System.IO.File.Create fileName
-                let pngExporter = OxyPlot.Wpf.PngExporter(Background = OxyColors.White, Width = width, Height = height)
-                pngExporter.Export(ch.Model, stream)
-
-        static member SavePdf (fileName : string, ?Width, ?Height) =
-            let width  = Chart.GetOptionalWidth  Width  |> float
-            let height = Chart.GetOptionalHeight Height |> float
-
-            let fileName = if fileName.ToLowerInvariant().EndsWith(".pdf") then fileName else sprintf "%s.pdf" fileName
-
-            fun (ch : #GenericChart) ->
-                use stream = System.IO.File.Create fileName
-                let pngExporter = new OxyPlot.PdfExporter(Background = OxyColors.White, Width = width, Height = height)
-                pngExporter.Export(ch.Model, stream)
-
-        /// Saves as PNG or PDF as specified by the extension of the fileName parameter. If the extension doesn't match either, thens save as PDF by default.
-        static member Save (fileName, ?Width, ?Height) =
-
-            fun (ch : #GenericChart) ->
-                match (System.IO.Path.GetExtension fileName).ToLowerInvariant() with
-                | ".pdf" -> Chart.SavePdf (fileName, ?Width=Width, ?Height=Height) ch
-                | ".png" -> Chart.SavePng (fileName, ?Width=Width, ?Height=Height) ch
-                | _ ->
-                    let fileName = fileName + ".pdf" // Save to PDF by default - it'll store the charts as vector images, which means they can be zoomed etc.
-                    Chart.SavePdf (fileName, ?Width=Width, ?Height=Height) ch
-        
-        /// <summary>Apply styling to the X Axis</summary>
-        /// <param name="Enabled">If false, disables the axis</param>
-        /// <param name="Title">The title of the axis</param>
-        /// <param name="Max">The maximum value for the axis</param>
-        /// <param name="Max">The minimum value for the axis</param>
-        /// <param name="Log">The axis scale is logarithmic</param>
-        /// <param name="ArrowStyle">The arrow style for the axis</param>
-        /// <param name="LabelStyle">The label style for the axis</param>
-        /// <param name="MajorGrid">The major grid points to use for the axis</param>
-        /// <param name="MinorGrid">The minor grid points to use for the axis</param>
-        /// <param name="MajorTickMark">The major tick marks to use for the axis</param>
-        /// <param name="MinorTickMark">The minor tick marks to use for the axis</param>
-        /// <param name="TitleAlignment">The alignment of the title for the axis</param>
-        /// <param name="TitleFontName">The font name for the title of the axis</param>
-        /// <param name="TitleFontSize">The font size for the title of the axis</param>
-        /// <param name="TitleColor">The color of the title of the axis</param>
-        /// <param name="Tooltip">The tooltip to use for the axis</param>
-        static member WithXAxis
-            (?Enabled, ?Title, ?Max, ?Min, ?Log (*, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
-                ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip *)) =
-
-            // TODO: let titleFont = StyleHelper.OptionalFont(?Name=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle) 
-
-            fun (ch : #GenericChart) ->
-                ch |> Helpers.ApplyStyles(?AxisXLogarithmic=Log, ?AxisXEnabled=Enabled, (* TODO: ?AxisXArrowStyle=ArrowStyle, ?AxisXLabelStyle=LabelStyle, (* ?AxisXIsMarginVisible=IsMarginVisible, *)*) ?AxisXMaximum=Max, ?AxisXMinimum=Min, (* TODO: , ?AxisXMajorGrid=MajorGrid, ?AxisXMinorGrid=MinorGrid, ?AxisXMajorTickMark=MajorTickMark, ?AxisXMinorTickMark=MinorTickMark,  *)
-                                        ?AxisXTitle=Title (* TODO: , ?AxisXTitleAlignment=TitleAlignment, ?AxisXTitleFont=titleFont, ?AxisXTitleForeColor=TitleColor, ?AxisXToolTip=ToolTip *))
-
-            /// <summary>Apply styling to the Y Axis</summary>
-            /// <param name="Enabled">If false, disables the axis</param>
-            /// <param name="Title">The title of the axis</param>
-            /// <param name="Max">The maximum value for the axis</param>
-            /// <param name="Max">The minimum value for the axis</param>
-            /// <param name="Log">The axis scale is logarithmic</param>
-            /// <param name="ArrowStyle">The arrow style for the axis</param>
-            /// <param name="LabelStyle">The label style for the axis</param>
-            /// <param name="MajorGrid">The major grid points to use for the axis</param>
-            /// <param name="MinorGrid">The minor grid points to use for the axis</param>
-            /// <param name="MajorTickMark">The major tick marks to use for the axis</param>
-            /// <param name="MinorTickMark">The minor tick marks to use for the axis</param>
-            /// <param name="TitleAlignment">The alignment of the title for the axis</param>
-            /// <param name="TitleFontName">The font name for the title of the axis</param>
-            /// <param name="TitleFontSize">The font size for the title of the axis</param>
-            /// <param name="TitleColor">The color of the title of the axis</param>
-            /// <param name="Tooltip">The tooltip to use for the axis</param>
-        static member WithYAxis
-            (?Enabled, ?Title, ?Max, ?Min, ?Log) (*, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
-                ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip)*) =
-
-            // TODO: let titleFont = StyleHelper.OptionalFont(?Name=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle) 
-
-            fun (ch : #GenericChart) ->
-                ch |> Helpers.ApplyStyles(?AxisYLogarithmic=Log,?AxisYEnabled=Enabled, (* TODO: ?AxisYArrowStyle=ArrowStyle,  ?AxisYLabelStyle=LabelStyle, (* ?AxisYIsMarginVisible=IsMarginVisible, *)*) ?AxisYMaximum=Max, ?AxisYMinimum=Min, (* TODO: , ?AxisYMajorGrid=MajorGrid, ?AxisYMinorGrid=MinorGrid, ?AxisYMajorTickMark=MajorTickMark, ?AxisYMinorTickMark=MinorTickMark, *) ?AxisYTitle=Title(* TODO: , ?AxisYTitleAlignment=TitleAlignment, ?AxisYTitleFont=titleFont, ?AxisYTitleForeColor=TitleColor, ?AxisYToolTip=ToolTip *))
-
-        /// <summary>Apply content and styling to the title, if present</summary>
-        /// <param name="InsideArea">If false, locates the title outside the chart area</param>
-        /// <param name="Text">The text of the title</param>
-        /// <param name="Style">The text style for the title</param>
-        /// <param name="FontName">The font name for the title</param>
-        /// <param name="FontSize">The font size for the title</param>
-        /// <param name="FontStyle">The font style for the title</param>
-        /// <param name="Background">The background for the title</param>
-        /// <param name="Color">The color for the title</param>
-        /// <param name="BorderColor">The border color for the title</param>
-        /// <param name="BorderWidth">The border width for the title</param>
-        /// <param name="BorderDashStyle">The border dash style for the title</param>
-        /// <param name="Orientation">The orientation for the title</param>
-        /// <param name="Alignment">The alignment for the title</param>
-        /// <param name="Docking">The docking location for the title</param>
-        static member WithTitle
-            (?Text, (* TODO: ?InsideArea, (*?Style, Note: not sure what do with this one *)*) ?FontName, ?FontSize, ?FontStyle (* TODO: , ?Background, ?Color, ?BorderColor, ?BorderWidth, ?BorderDashStyle, 
-                ?Orientation, ?Alignment, ?Docking *)) =
-            let font = StyleHelper.OptionalFont(?Name=FontName, ?Size=FontSize, ?Style=FontStyle) 
-            fun (ch : #GenericChart) ->
-                ch |> Helpers.ApplyStyles(?Title=Text, (*?TitleStyle=Style,*) ?TitleFont=font) // TODO: , ?TitleBackground=Background, ?TitleColor=Color, ?TitleBorderColor=BorderColor, ?TitleBorderWidth=BorderWidth, ?TitleBorderDashStyle=BorderDashStyle, ?TitleOrientation=Orientation, ?TitleAlignment=Alignment, ?TitleDocking=Docking, ?TitleInsideArea=InsideArea)
-
-        static member WithSubtitle
-            (?Text, (* TODO: ?InsideArea, (*?Style, Note: not sure what do with this one *)*) ?FontName, ?FontSize, ?FontStyle (* TODO: , ?Background, ?Color, ?BorderColor, ?BorderWidth, ?BorderDashStyle, 
-                ?Orientation, ?Alignment, ?Docking *)) =
-            let font = StyleHelper.OptionalFont(?Name=FontName, ?Size=FontSize, ?Style=FontStyle) 
-            fun (ch : #GenericChart) ->
-                ch |> Helpers.ApplyStyles(?Subtitle=Text, (*?TitleStyle=Style,*) ?SubtitleFont=font) // TODO: , ?TitleBackground=Background, ?TitleColor=Color, ?TitleBorderColor=BorderColor, ?TitleBorderWidth=BorderWidth, ?TitleBorderDashStyle=BorderDashStyle, ?TitleOrientation=Orientation, ?TitleAlignment=Alignment, ?TitleDocking=Docking, ?TitleInsideArea=InsideArea)
-
-        /// <summary>Apply styling to the legend of the chart</summary>
-        /// <param name="InsideArea">If false, places the legend outside the chart area</param>
-        static member WithLegend
-            (?Enabled,(* TODO: ?Title, ?Background, ?FontName,  ?FontSize, ?FontStyle, ?Alignment, ?Docking,*)
-             ?InsideArea, 
-             ?Position
-             (* TODO: ?TitleAlignment, ?TitleFont, ?TitleColor, ?BorderColor, ?BorderWidth, ?BorderDashStyle*)) = 
-            (* TODO:
-            let font = StyleHelper.OptionalFont(?Family=FontName, ?Size=FontSize, ?Style=FontStyle) 
-            // Specifying AndLegend enables the legend by default
-            let legendEnabled = defaultArg Enabled true
-            *)
-            fun (ch : #GenericChart) ->
-                ch |> Helpers.ApplyStyles(?LegendEnabled=Enabled,(* TODO: ?LegendTitle=Title, ?LegendBackground=Background, ?LegendFont=font,*) ?InsideArea=InsideArea, ?LegendPosition=Position)(* TODO:, ?LegendDocking=Docking, ?LegendIsDockedInsideArea=InsideArea,
-                                    ?LegendTitleAlignment=TitleAlignment, ?LegendTitleFont=TitleFont, ?LegendTitleForeColor=TitleColor, ?LegendBorderColor=BorderColor, ?LegendBorderWidth=BorderWidth, ?LegendBorderDashStyle=BorderDashStyle) *)
-
-        static member WithSize (width, height) (ch : #GenericChart) =
-            ch.Width  <- Some width
-            ch.Height <- Some height
-            ch
-
     /// Contains static methods to construct charts whose data source is an event or observable which 
     /// updates the entire data set.
     type LiveChart() = 
@@ -2800,13 +2266,58 @@ namespace FSharp.Charting
                 | true -> sprintf "%s (%i)" defaultName (dict.[defaultName]())
                 | false -> dict.Add(defaultName, createCounter()); defaultName
 
-        type ChartTypes.GenericChart with
-            member ch.WithXAxis    args = ch |> Chart.WithXAxis    args
-            member ch.WithTitle    args = ch |> Chart.WithTitle    args
-            member ch.WithSubtitle args = ch |> Chart.WithSubtitle args
-            member ch.ShowChart    args = ch |> Chart.Show         args
 
+        type ChartTypes.GenericChart with
 #if INCOMPLETE_API
+            /// <summary>Apply styling to the X Axis</summary>
+            /// <param name="Enabled">If false, disables the axis</param>
+            /// <param name="Title">The title of the axis</param>
+            /// <param name="Max">The maximum value for the axis</param>
+            /// <param name="Max">The minimum value for the axis</param>
+            /// <param name="Log">The axis scale is logarithmic</param>
+            /// <param name="ArrowStyle">The arrow style for the axis</param>
+            /// <param name="LabelStyle">The label style for the axis</param>
+            /// <param name="MajorGrid">The major grid points to use for the axis</param>
+            /// <param name="MinorGrid">The minor grid points to use for the axis</param>
+            /// <param name="MajorTickMark">The major tick marks to use for the axis</param>
+            /// <param name="MinorTickMark">The minor tick marks to use for the axis</param>
+            /// <param name="TitleAlignment">The alignment of the title for the axis</param>
+            /// <param name="TitleFontName">The font name for the title of the axis</param>
+            /// <param name="TitleFontSize">The font size for the title of the axis</param>
+            /// <param name="TitleColor">The color of the title of the axis</param>
+            /// <param name="Tooltip">The tooltip to use for the axis</param>
+            member ch.WithXAxis
+                (?Enabled, ?Title, ?Max, ?Min, ?Log, ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
+                 ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip) =
+
+                let titleFont = StyleHelper.OptionalFont(?Family=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle) 
+                ch |> Helpers.ApplyStyles(?AxisXLogarithmic=Log,?AxisXEnabled=Enabled, ?AxisXArrowStyle=ArrowStyle, ?AxisXLabelStyle=LabelStyle, (* ?AxisXIsMarginVisible=IsMarginVisible, *) ?AxisXMaximum=Max, ?AxisXMinimum=Min, ?AxisXMajorGrid=MajorGrid, ?AxisXMinorGrid=MinorGrid, ?AxisXMajorTickMark=MajorTickMark, ?AxisXMinorTickMark=MinorTickMark, 
+                                          ?AxisXTitle=Title, ?AxisXTitleAlignment=TitleAlignment, ?AxisXTitleFont=titleFont, ?AxisXTitleForeColor=TitleColor, ?AxisXToolTip=ToolTip) 
+
+            /// <summary>Apply styling to the Y Axis</summary>
+            /// <param name="Enabled">If false, disables the axis</param>
+            /// <param name="Title">The title of the axis</param>
+            /// <param name="Max">The maximum value for the axis</param>
+            /// <param name="Max">The minimum value for the axis</param>
+            /// <param name="Log">The axis scale is logarithmic</param>
+            /// <param name="ArrowStyle">The arrow style for the axis</param>
+            /// <param name="LabelStyle">The label style for the axis</param>
+            /// <param name="MajorGrid">The major grid points to use for the axis</param>
+            /// <param name="MinorGrid">The minor grid points to use for the axis</param>
+            /// <param name="MajorTickMark">The major tick marks to use for the axis</param>
+            /// <param name="MinorTickMark">The minor tick marks to use for the axis</param>
+            /// <param name="TitleAlignment">The alignment of the title for the axis</param>
+            /// <param name="TitleFontName">The font name for the title of the axis</param>
+            /// <param name="TitleFontSize">The font size for the title of the axis</param>
+            /// <param name="TitleColor">The color of the title of the axis</param>
+            /// <param name="Tooltip">The tooltip to use for the axis</param>
+            member ch.WithYAxis
+                (?Enabled, ?Title, ?Max, ?Min, ?Log, ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark, 
+                 ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip) =
+
+                let titleFont = StyleHelper.OptionalFont(?Family=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle) 
+                ch |> Helpers.ApplyStyles(?AxisYLogarithmic=Log,?AxisYEnabled=Enabled,?AxisYArrowStyle=ArrowStyle,  ?AxisYLabelStyle=LabelStyle, (* ?AxisYIsMarginVisible=IsMarginVisible, *) ?AxisYMaximum=Max, ?AxisYMinimum=Min, ?AxisYMajorGrid=MajorGrid, ?AxisYMinorGrid=MinorGrid, ?AxisYMajorTickMark=MajorTickMark, ?AxisYMinorTickMark=MinorTickMark, ?AxisYTitle=Title, ?AxisYTitleAlignment=TitleAlignment, ?AxisYTitleFont=titleFont, ?AxisYTitleForeColor=TitleColor, ?AxisYToolTip=ToolTip) 
+
             /// <summary>Apply styling to the second X axis, if present</summary>
             /// <param name="Enabled">If false, disables the axis</param>
             /// <param name="Title">The title of the axis</param>
@@ -2855,6 +2366,27 @@ namespace FSharp.Charting
                 let titleFont = StyleHelper.OptionalFont(?Family=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle) 
                 ch |> Helpers.ApplyStyles(?AxisY2Logarithmic=Log,?AxisY2Enabled=Enabled, ?AxisY2ArrowStyle=ArrowStyle, ?AxisY2LabelStyle=LabelStyle, (* ?AxisY2IsMarginVisible=IsMarginVisible, *)?AxisY2Maximum=Max, ?AxisY2Minimum=Min, ?AxisY2MajorGrid=MajorGrid, ?AxisY2MinorGrid=MinorGrid, ?AxisY2MajorTickMark=MajorTickMark, ?AxisY2MinorTickMark=MinorTickMark, ?AxisY2Title=Title, ?AxisY2TitleAlignment=TitleAlignment, ?AxisY2TitleFont=titleFont, ?AxisY2TitleForeColor=TitleColor, ?AxisY2ToolTip=ToolTip) 
 
+            /// <summary>Apply content and styling to the title, if present</summary>
+            /// <param name="InsideArea">If false, locates the title outside the chart area</param>
+            /// <param name="Text">The text of the title</param>
+            /// <param name="Style">The text style for the title</param>
+            /// <param name="FontName">The font name for the title</param>
+            /// <param name="FontSize">The font size for the title</param>
+            /// <param name="FontStyle">The font style for the title</param>
+            /// <param name="Background">The background for the title</param>
+            /// <param name="Color">The color for the title</param>
+            /// <param name="BorderColor">The border color for the title</param>
+            /// <param name="BorderWidth">The border width for the title</param>
+            /// <param name="BorderDashStyle">The border dash style for the title</param>
+            /// <param name="Orientation">The orientation for the title</param>
+            /// <param name="Alignment">The alignment for the title</param>
+            /// <param name="Docking">The docking location for the title</param>
+            member ch.WithTitle
+                (?Text, ?InsideArea, ?Style, ?FontName, ?FontSize, ?FontStyle, ?Background, ?Color, ?BorderColor, ?BorderWidth, ?BorderDashStyle, 
+                 ?Orientation, ?Alignment, ?Docking) = 
+                let font = StyleHelper.OptionalFont(?Family=FontName, ?Size=FontSize, ?Style=FontStyle) 
+                ch |> Helpers.ApplyStyles(?Title=Text, ?TitleStyle=Style, ?TitleFont=font, ?TitleBackground=Background, ?TitleColor=Color, ?TitleBorderColor=BorderColor, ?TitleBorderWidth=BorderWidth, ?TitleBorderDashStyle=BorderDashStyle, ?TitleOrientation=Orientation, ?TitleAlignment=Alignment, ?TitleDocking=Docking, ?TitleInsideArea=InsideArea)
+
             /// <summary>Enables 3D styling for the chart</summary>
             /// <param name="ShowMarkerLines">Specifies whether marker lines are displayed when rendered in 3D.</param>
             member ch.With3D
@@ -2871,6 +2403,17 @@ namespace FSharp.Charting
                 (?Color, ?Size, ?Step, ?Style, ?BorderColor, ?BorderWidth, ?PointWidth, ?PixelPointWidth, ?PointStyle, ?MaxPixelPointWidth, ?MinPixelPointWidth) =
               ch |> Helpers.ApplyStyles(?MarkerColor=Color, ?MarkerSize=Size, ?MarkerStep=Step, ?MarkerStyle=Style, ?MarkerBorderColor=BorderColor, ?MarkerBorderWidth=BorderWidth,
                                         ?PointWidth=PointWidth,?PointStyle=PointStyle,?MaxPixelPointWidth=MaxPixelPointWidth, ?MinPixelPointWidth=MinPixelPointWidth, ?PixelPointWidth=PixelPointWidth)
+
+            /// <summary>Apply styling to the legend of the chart</summary>
+            /// <param name="InsideArea">If false, places the legend outside the chart area</param>
+            member ch.WithLegend
+              (?Enabled,?Title, ?Background, ?FontName,  ?FontSize, ?FontStyle, ?Alignment, ?Docking, ?InsideArea, 
+               ?TitleAlignment, ?TitleFont, ?TitleColor, ?BorderColor, ?BorderWidth, ?BorderDashStyle) = 
+              let font = StyleHelper.OptionalFont(?Family=FontName, ?Size=FontSize, ?Style=FontStyle) 
+              // Specifying AndLegend enables the legend by default
+              let legendEnabled = defaultArg Enabled true
+              ch |> Helpers.ApplyStyles(LegendEnabled=legendEnabled,?LegendTitle=Title, ?LegendBackground=Background, ?LegendFont=font, ?LegendAlignment=Alignment, ?LegendDocking=Docking, ?LegendIsDockedInsideArea=InsideArea,
+                                        ?LegendTitleAlignment=TitleAlignment, ?LegendTitleFont=TitleFont, ?LegendTitleForeColor=TitleColor, ?LegendBorderColor=BorderColor, ?LegendBorderWidth=BorderWidth, ?LegendBorderDashStyle=BorderDashStyle)
 
             /// <summary>Add data point labels and apply styling to the labels</summary>
             /// <param name="LabelPosition">The relative data point width. Any double from 0 to 2.</param>
@@ -2893,6 +2436,20 @@ namespace FSharp.Charting
               (?Name,?Color, ?AreaBackground,?Margin,?Background,?BorderColor, ?BorderWidth, ?SplineLineTension(* , ?AlignWithChartArea, ?AlignmentOrientation, ?AlignmentStyle *) ) =
               ch |> Helpers.ApplyStyles(?Name=Name,?Color=Color, ?AreaBackground=AreaBackground,?Margin=Margin,?Background=Background,?BorderColor=BorderColor, ?BorderWidth=BorderWidth, ?SplineLineTension=SplineLineTension(* , ?AlignWithChartArea=AlignWithChartArea , ?AlignmentOrientation=AlignmentOrientation, ?AlignmentStyle=AlignmentStyle *) )
 
+
+#endif
+            /// Display the chart in a new Gtk.Window()
+            member ch.ShowChart () =
+                let plot = new OxyPlot.GtkSharp.PlotView(Model = ch.Model )
+                let win = new Gtk.Window(ProvideTitle ch)
+                plot.SetSizeRequest(700, 500)
+                win.SetSizeRequest(700, 500)
+                win.Add(plot)
+                plot.Show()
+                win.Show()
+                win.Present()
+
+#if INCOMPLETE_API
         type Chart with 
 
             /// <summary>Apply styling to the X Axis</summary>

@@ -8,7 +8,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{35EEF7
 		paket.lock = paket.lock
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Charting", "src\FSharp.Charting.fsproj", "{6EBFDE55-9687-40A9-8C1A-6E204ECB117F}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Charting", "src\FSharp.Charting\FSharp.Charting.fsproj", "{6EBFDE55-9687-40A9-8C1A-6E204ECB117F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{36E72EB1-5847-4B38-8993-B951648CB0D9}"
 	ProjectSection(SolutionItems) = preProject
@@ -21,13 +21,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{36E7
 		RELEASE_NOTES.md = RELEASE_NOTES.md
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Charting.Gtk", "src\FSharp.Charting.Gtk.fsproj", "{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Charting.Gtk", "src\FSharp.Charting.Gtk\FSharp.Charting.Gtk.fsproj", "{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "content", "content", "{E0C29A24-145E-4364-A268-2687F5136613}"
 	ProjectSection(SolutionItems) = preProject
 		docs\content\BarAndColumnCharts.fsx = docs\content\BarAndColumnCharts.fsx
 		docs\content\BoxPlotCharts.fsx = docs\content\BoxPlotCharts.fsx
 		docs\content\contributing.md = docs\content\contributing.md
+		DisplayMultipleCharts.fsx = DisplayMultipleCharts.fsx
 		docs\content\EventEx-0.1.fsx = docs\content\EventEx-0.1.fsx
 		docs\content\fsharpcharting.md = docs\content\fsharpcharting.md
 		docs\content\FurtherSamples.fsx = docs\content\FurtherSamples.fsx
@@ -50,26 +51,50 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{77EFC808
 		docs\tools\templates\template.cshtml = docs\tools\templates\template.cshtml
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Charting.Wpf", "src\FSharp.Charting.Wpf.fsproj", "{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Charting.Wpf", "src\FSharp.Charting.Wpf\FSharp.Charting.Wpf.fsproj", "{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FSharp.Charting.Controls", "src\FSharp.Charting.Controls\FSharp.Charting.Controls.fsproj", "{30597BE9-08F8-4832-8AB7-009C00A6A2F2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
+		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
+		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6EBFDE55-9687-40A9-8C1A-6E204ECB117F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6EBFDE55-9687-40A9-8C1A-6E204ECB117F}.Debug|x86.Build.0 = Debug|Any CPU
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6EBFDE55-9687-40A9-8C1A-6E204ECB117F}.Release|x86.ActiveCfg = Release|Any CPU
+		{6EBFDE55-9687-40A9-8C1A-6E204ECB117F}.Release|x86.Build.0 = Release|Any CPU
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Debug|x86.Build.0 = Debug|Any CPU
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Release|x86.ActiveCfg = Release|Any CPU
+		{6EBFDE55-9687-40A9-8C1A-6E204ECB117D}.Release|x86.Build.0 = Release|Any CPU
 		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Debug|x86.Build.0 = Debug|Any CPU
 		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Release|x86.ActiveCfg = Release|Any CPU
+		{BA69BA28-7BC8-4BF6-BDB7-776F7F56825F}.Release|x86.Build.0 = Release|Any CPU
+		{30597BE9-08F8-4832-8AB7-009C00A6A2F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30597BE9-08F8-4832-8AB7-009C00A6A2F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30597BE9-08F8-4832-8AB7-009C00A6A2F2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{30597BE9-08F8-4832-8AB7-009C00A6A2F2}.Debug|x86.Build.0 = Debug|Any CPU
+		{30597BE9-08F8-4832-8AB7-009C00A6A2F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30597BE9-08F8-4832-8AB7-009C00A6A2F2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30597BE9-08F8-4832-8AB7-009C00A6A2F2}.Release|x86.ActiveCfg = Release|Any CPU
+		{30597BE9-08F8-4832-8AB7-009C00A6A2F2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
