@@ -1969,15 +1969,6 @@ namespace FSharp.Charting
 
                     let plots = charts |> Array.map toPlotView
 
-//                    let suggestionProvider =
-//                        {
-//                            new WpfControls.ISuggestionProvider with
-//                                member __.GetSuggestions(filter) =
-//                                    plots
-//                                    |> Array.filter (fun x -> x.ActualModel.Title.Contains filter)
-//                                    :> IEnumerable    
-//                        }
-
                     let axisMinimums = Dictionary<PlotView, _ []>() // Can't use F# Map because PlotView, GenericChart etc. don't implement IComparable
                 
                     plots |> Array.iter
@@ -2035,21 +2026,6 @@ namespace FSharp.Charting
                                     SelectedIndex = 0
                                 )
 
-//                        let goToPlot =
-//                            WpfControls.AutoCompleteTextBox
-//                                (
-//                                    FontSize=15.0,
-//                                    MinWidth=350.0,
-//                                    Height=25.0,
-//                                    VerticalAlignment=VerticalAlignment.Center,
-//                                    DisplayMember=plotSelector.DisplayMemberPath,
-//                                    Provider=suggestionProvider,
-//                                    Watermark="Select plot"
-//                                )
-//                        System.Windows.Data.Binding()
-//                        goToPlot.SelectedItem
-//                            WPFTextBoxAutoComplete.AutoCompleteBehavior.SetAutoCompleteItemsSource(plots)
-
                         let helpButton = Button(Content="Help", FontSize=15.0, Width=100.0, Margin=Thickness(10.0), Height=30.0)
                         helpButton.Click.Add(fun _ -> Chart.ShowHelp window)
 
@@ -2070,7 +2046,6 @@ namespace FSharp.Charting
                         buttons.Children.Add incrementButton |> ignore
                         buttons.Children.Add chartIndex      |> ignore
                         buttons.Children.Add plotSelector    |> ignore
-                        //buttons.Children.Add goToPlot        |> ignore
                         buttons.Children.Add helpButton      |> ignore
 
                         contents.Children.Add buttons |> ignore
