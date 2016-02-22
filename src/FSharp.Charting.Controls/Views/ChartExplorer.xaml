@@ -6,7 +6,7 @@
   xmlns:oxyplot="clr-namespace:OxyPlot;assembly=OxyPlot"
   xmlns:oxyplotwpf="clr-namespace:OxyPlot.Wpf;assembly=OxyPlot.Wpf"
   xmlns:local="clr-namespace:FSharp.Charting.Controls"
-  xmlns:wpfc="clr-namespace:WpfControls;assembly=WpfControls"
+  xmlns:wpfc="clr-namespace:WpfControls.Editors;assembly=WpfControls"
   mc:Ignorable="d" 
   d:DesignHeight="800"
   d:DesignWidth="1200"
@@ -15,7 +15,7 @@
     <Grid.Resources>
       <ResourceDictionary>
         <ResourceDictionary.MergedDictionaries>
-          <ResourceDictionary Source="pack://application:,,,/WpfControls;component/editors/autocompletetextbox/themes/generic.xaml"/>
+          <ResourceDictionary Source="pack://application:,,,/WpfControls;component/themes/generic.xaml"/>
         </ResourceDictionary.MergedDictionaries>
         <Style TargetType="wpfc:AutoCompleteTextBox">
           <Setter Property="Template">

@@ -8,7 +8,7 @@ open FSharp.Control.Reactive
 open FSharp.Charting
 open FSharp.ViewModule
 
-open WpfControls
+open WpfControls.Editors
 open OxyPlot
 
 type Search =
