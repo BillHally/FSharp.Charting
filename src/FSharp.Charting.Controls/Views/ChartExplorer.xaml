@@ -111,8 +111,8 @@
     <StackPanel>
 
       <StackPanel Orientation="Horizontal">
-        <Button FontSize="15" FontWeight="Bold" Width="50" Height="30" VerticalAlignment="Center" Margin="10">&lt;</Button>
-        <Button FontSize="15" FontWeight="Bold" Width="50" Height="30" VerticalAlignment="Center" Margin="10">&gt;</Button>
+        <Button FontSize="15" FontWeight="Bold" Width="50" Height="30" VerticalAlignment="Center" Margin="10" Command="{Binding PreviousChartCommand}">&lt;</Button>
+        <Button FontSize="15" FontWeight="Bold" Width="50" Height="30" VerticalAlignment="Center" Margin="10" Command="{Binding NextChartCommand}">&gt;</Button>
         <TextBlock FontSize="15" Width="100" Margin="10" Height="20" VerticalAlignment="Center" />
 
         <ComboBox
