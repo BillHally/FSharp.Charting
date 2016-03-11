@@ -33,8 +33,10 @@ type PlotSuggestionProvider(plots : seq<PlotModel>) =
             :> _
 
 type ChartExplorerEvent =
+    | FirstChartEvent
     | PreviousChartEvent
     | NextChartEvent
+    | LastChartEvent
 
 type ChartExplorerViewModel(charts : seq<GenericChart>) as this =
     inherit EventViewModelBase<ChartExplorerEvent>()
@@ -51,8 +53,10 @@ type ChartExplorerViewModel(charts : seq<GenericChart>) as this =
 
     let ui = System.Reactive.Concurrency.DispatcherScheduler.Current
 
-    let previousChartCommand = this.Factory.EventValueCommand(PreviousChartEvent)
-    let nextChartCommand = this.Factory.EventValueCommand(NextChartEvent)
+    let firstChartCommand    = this.Factory.EventValueCommand FirstChartEvent
+    let previousChartCommand = this.Factory.EventValueCommand PreviousChartEvent
+    let nextChartCommand     = this.Factory.EventValueCommand NextChartEvent
+    let lastChartCommand     = this.Factory.EventValueCommand LastChartEvent
 
     //let plots = charts
 
@@ -118,8 +122,10 @@ type ChartExplorerViewModel(charts : seq<GenericChart>) as this =
         |> Observable.add
             (
             function
-            | PreviousChartEvent -> decrementPlotIndex()
-            | NextChartEvent     -> incrementPlotIndex()
+            | FirstChartEvent    -> setFirstPlotIndex  ()
+            | PreviousChartEvent -> decrementPlotIndex ()
+            | NextChartEvent     -> incrementPlotIndex ()
+            | LastChartEvent     -> setLastPlotIndex   ()
             )
 
     member __.Plots = plots
@@ -128,6 +134,7 @@ type ChartExplorerViewModel(charts : seq<GenericChart>) as this =
     member __.SelectedPlot   with get () = selectedPlot.Value   and set v = selectedPlot.Value   <- v
     member __.SelectedSearch with get () = selectedSearch.Value and set v = selectedSearch.Value <- v
 
+    member __.FirstChartCommand    = firstChartCommand
     member __.PreviousChartCommand = previousChartCommand
     member __.NextChartCommand     = nextChartCommand
-
+    member __.LastChartCommand     = lastChartCommand

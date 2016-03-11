@@ -12,6 +12,13 @@
   d:DesignWidth="1200"
   >
   <Grid>
+    <Grid.InputBindings>
+      <KeyBinding Gesture="Shift+Ctrl+Left"  Command="{Binding FirstChartCommand}"    />
+      <KeyBinding Gesture="Ctrl+Left"        Command="{Binding PreviousChartCommand}" />
+      <KeyBinding Gesture="Ctrl+Right"       Command="{Binding NextChartCommand}"     />
+      <KeyBinding Gesture="Shift+Ctrl+Right" Command="{Binding LastChartCommand}"     />
+    </Grid.InputBindings>
+    
     <Grid.Resources>
       <ResourceDictionary>
         <ResourceDictionary.MergedDictionaries>
