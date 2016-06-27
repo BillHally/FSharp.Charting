@@ -11,7 +11,9 @@ temp/*
 *.orig
 docs/output
 .fake
-src/FSharp.Charting.Controls/bin/
-src/FSharp.Charting.Controls/obj/
-src/FSharp.Charting/bin/
-src/FSharp.Charting/obj/
+src/FSharp.Charting.Controls/bin/*
+src/FSharp.Charting.Controls/obj/*
+src/FSharp.Charting/bin/*
+src/FSharp.Charting/obj/*
+src/FSharp.Charting.Wpf/bin/
+src/FSharp.Charting.Wpf/obj/
