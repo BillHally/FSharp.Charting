@@ -1038,16 +1038,16 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member BoxPlot(data,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?Percentile,?ShowAverage,?ShowMedian,?ShowUnusualValues,?WhiskerPercentile) = 
+        static member BoxPlot(data,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?BoxWidth,?StrokeColor,?StrokeThickness,?OutlierSize) = 
 
             let boxPlotSeries =
                 BoxPlotSeries
                     (
                         Title           = "Results",
-                        Stroke          = OxyColors.Black,
-                        StrokeThickness = 1.0,
-                        OutlierSize     = 2.0,
-                        BoxWidth        = 0.4
+                        Stroke          = defaultArg StrokeColor OxyColors.Black,
+                        StrokeThickness = defaultArg StrokeThickness 1.0,
+                        OutlierSize     = defaultArg OutlierSize 2.0,
+                        BoxWidth        = defaultArg BoxWidth 0.4
                     )
 
             data |> Seq.iter boxPlotSeries.Items.Add
