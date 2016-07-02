@@ -8,8 +8,88 @@
 #r @"..\FSharp.Charting.Controls\bin\Debug\WpfControls.dll"
 #r @"..\FSharp.Charting.Controls\bin\Debug\FSharp.Charting.Controls.dll"
 
+open System
 open FSharp.Charting
 open FSharp.Charting.Controls
+
+module ChartConfiguration =
+    type Axis =
+        {
+            AxisTitle : string
+
+            Minimum : float
+            Maximum : float
+        }
+
+    type Data =
+        | Ints        of  int              seq
+        | Doubles     of  double           seq
+        | DoublePairs of (double * double) seq
+
+    type Series =
+        {
+            SeriesName : string
+            Data       : Data
+            Labels     : obj seq
+        }
+
+    type ChartConfiguration =
+        {
+            Title : string
+
+            XAxis : Axis
+            YAxis : Axis
+
+            Series : Series list
+        }
+
+open ChartConfiguration
+
+module Chart =
+    let private defaultAxis =
+        {
+            AxisTitle = ""
+            Minimum = Double.NaN
+            Maximum = Double.NaN
+        }
+
+    let Default =
+        {
+            Title  = ""
+            Series = []
+            XAxis  = defaultAxis
+            YAxis  = defaultAxis
+        }
+
+    let withTitle  title  x = { x with Title  = title  }
+    let withData   data   x = { x with Data   = data   }
+    let withLabels labels x = { x with Labels = labels }
+
+    let point (x : Series) =
+        match x.Data with
+        | Ints        xs -> Chart.Point(xs, Name = x.SeriesName, Labels = x.Labels)
+        | Doubles     xs -> Chart.Point(xs, Name = x.SeriesName, Labels = x.Labels)
+        | DoublePairs xs -> Chart.Point(xs, Name = x.SeriesName, Labels = x.Labels)
+
+    let toChart x =
+        x.Series
+        |> Seq.map point
+        |> Chart.Combine
+        |> Chart.WithTitle x.Title
+
+module Series =
+    let Default =
+        {
+            SeriesName = ""
+            Data = Doubles []
+            Labels = []
+        }
+
+    let withData   data   x = { x with Data       = data   }
+    let withNane   name   x = { x with SeriesName = name   }
+    let withLabels labels x = { x with Labels     = labels }
+
+    let toChart x = { Chart.Default with Title = x.SeriesName; Series = [ x ] }
 
 type A =
     {
@@ -29,10 +109,56 @@ let points1 = data1 |> Array.map (fun x -> x.Value)
 let points2 = data2 |> Array.map (fun x -> x.Value)
 let points3 = data3 |> Array.map (fun x -> x.Value)
 
-[|
-    Chart.Point (points0, Labels = (data0 |> Array.map (fun x -> x :> obj)), Title="Label example 1")
-    Chart.Point (points1, Labels = (data1 |> Array.map (fun x -> x :> obj)), Title="Label example 2")
-    Chart.Point (points2, Labels = (data2 |> Array.map (fun x -> x :> obj)), Title="Label example 3")
-    Chart.Point (points3, Labels = (data3 |> Array.map (fun x -> x :> obj)), Title="Label example 4")
-|]
+//[|
+//    Chart.Point (points0, Labels = (data0 |> Array.map (fun x -> x :> obj)), Title="Label example 1")
+//    Chart.Point (points1, Labels = (data1 |> Array.map (fun x -> x :> obj)), Title="Label example 2")
+//    Chart.Point (points2, Labels = (data2 |> Array.map (fun x -> x :> obj)), Title="Label example 3")
+//    Chart.Point (points3, Labels = (data3 |> Array.map (fun x -> x :> obj)), Title="Label example 4")
+//|]
+//|> Chart.Explore (IsMaximized=true)
+
+[
+    { SeriesName = "Label example 1"; Data = Ints points0; Labels = (data0 |> Array.map (fun x -> x :> obj)) }
+    { SeriesName = "Label example 2"; Data = Ints points1; Labels = (data1 |> Array.map (fun x -> x :> obj)) }
+    { SeriesName = "Label example 3"; Data = Ints points2; Labels = (data2 |> Array.map (fun x -> x :> obj)) }
+    { SeriesName = "Label example 4"; Data = Ints points3; Labels = (data3 |> Array.map (fun x -> x :> obj)) }
+]
+|> List.map (Series.toChart >> Chart.toChart)
 |> Chart.Explore (IsMaximized=true)
+
+
+/////////////////////
+open OxyPlot
+
+let scalePixelValue x = x / (float UInt16.MaxValue)
+
+let log' x = log (x + 1.0)
+
+let normalize a b =
+    let a = scalePixelValue a
+    let b = scalePixelValue b
+    log' (abs (1.0 - abs (a / b)))
+
+let getPoints other =
+    [0..100..(int UInt16.MaxValue)]
+    |> List.map
+        (
+            fun x ->
+                let x = float x
+                let other = float other
+                let normalizedRatio = normalize x other
+                (x, normalizedRatio), sprintf "x: %f\r\nOther value: %f\r\nNormalized ratio: %f" x other normalizedRatio
+        )
+    
+[0.0..1000.0..65535.0]
+|> List.map
+    (
+        fun x ->
+            let points, labels = getPoints x |> List.unzip
+
+            Chart.Point(points, Name = sprintf "%d" (int x), Labels = (labels |> Seq.map (fun x -> x :> obj)), MarkerType = MarkerType.Circle, MarkerSize = 1.0)
+    )
+|> Chart.Combine
+|> Chart.Show (IsMaximized = true)
+
+
