@@ -718,16 +718,25 @@ namespace FSharp.Charting
                 series.ItemsSource <- data
                 let chart = GenericChart(model)
                 match data with 
-                | :? INotifyCollectionChanged as i -> 
-                      let rec handler = NotifyCollectionChangedEventHandler(fun _ _ -> 
-                        series.ItemsSource <- data
-                        match model.PlotView with 
-                        | null -> ()
-                        | _ ->  
-                           // An exception will indicate form is no longer working, e.g. shutdown or disposed, so disconnect
-                           try model.InvalidatePlot(true) 
-                           with _ -> i.CollectionChanged.RemoveHandler handler)
-                      i.CollectionChanged.AddHandler handler
+                | :? INotifyCollectionChanged as i ->
+                    let handlerRef = ref None
+                    let handler =
+                        NotifyCollectionChangedEventHandler
+                            (
+                                fun _ _ -> 
+                                    series.ItemsSource <- data
+                                    match model.PlotView with 
+                                    | null -> ()
+                                    | _ ->  
+                                        // An exception will indicate form is no longer working, e.g. shutdown or disposed, so disconnect
+                                        try model.InvalidatePlot(true) 
+                                        with _ ->
+                                            match !handlerRef with
+                                            | Some handler -> i.CollectionChanged.RemoveHandler handler
+                                            | None -> ()
+                            )
+                    handlerRef := Some handler
+                    i.CollectionChanged.AddHandler handler
                 | _ -> ()
                 chart
 
@@ -776,6 +785,15 @@ namespace FSharp.Charting
                                             x.Model.Series.Remove series |> ignore
                                             primaryChart.Model.Series.Add series
                                     )
+
+                                x.Model.Axes
+                                |> List.ofSeq // ditto
+                                |> List.iter
+                                    (
+                                        fun axis ->
+                                            x.Model.Axes.Remove axis |> ignore
+                                            primaryChart.Model.Axes.Add axis
+                                    )
                         )
 
                     primaryChart
@@ -812,6 +830,55 @@ namespace FSharp.Charting
             | BottomCenter -> LegendPosition.BottomCenter
             | BottomRight  -> LegendPosition.BottomRight
 
+        static member CreateAxis logarithmic categorical position =
+            let axis =
+                match logarithmic, categorical with
+                |  true,  true -> failwith "Can't create a logarithmic category axis"
+                |  true, false -> Axes.LogarithmicAxis() :> Axes.Axis
+                | false,  true -> Axes.CategoryAxis()    :> Axes.Axis
+                | false, false -> Axes.LinearAxis()      :> Axes.Axis
+            axis.Position <- position
+
+            axis
+
+        static member EnsureDefaultAxis
+            (
+                model : PlotModel,
+                ?AxisXLogarithmic : bool,
+                ?AxisYLogarithmic : bool,
+                ?AxisXLabelFormatter : float -> string,
+                ?AxisYLabelFormatter : float -> string
+            )
+            =
+            fun isXAxis ->
+                let createAxis logRequired categoryAxisRequired isXAxis =
+                    let axis = Helpers.CreateAxis logRequired categoryAxisRequired (if isXAxis then Axes.AxisPosition.Bottom else Axes.AxisPosition.Left)
+                    model.Axes.Add axis
+                    axis
+
+                let logRequired = if isXAxis then defaultArg AxisXLogarithmic false else defaultArg AxisYLogarithmic false
+
+                let categoryAxisRequired =
+                    if isXAxis then
+                        if model.Series |> Seq.tryFind (fun x -> match x :> obj with | :? BoxPlotSeries -> true | _ -> false) |> Option.isSome then
+                            true
+                        else
+                            Option.isSome AxisXLabelFormatter
+                    else
+                        Option.isSome AxisYLabelFormatter
+
+                match model.Axes |> Seq.tryFind (fun x -> (if isXAxis then x.IsHorizontal() else x.IsVertical()) && x.IsXyAxis()) with 
+                | None   -> 
+                    createAxis logRequired categoryAxisRequired isXAxis
+                | Some a ->
+                    match a, logRequired, categoryAxisRequired with
+                    |                       _, false, false
+                    | :? Axes.LogarithmicAxis,  true, false
+                    | :? Axes.CategoryAxis,    false,  true -> a
+                    | _, logRequired, categoryAxisRequired ->
+                        model.Axes.Remove a |> ignore
+                        createAxis logRequired categoryAxisRequired isXAxis
+
         static member ApplyStyles
             (
                 ?Color,
@@ -836,51 +903,28 @@ namespace FSharp.Charting
                 ?LegendEnabled : bool,
                 ?LegendPosition : Position
             ) =
-                let createAxis logarithmic categorical position =
-                    let axis =
-                        match logarithmic, categorical with
-                        |  true,  true -> failwith "Can't create a logarithmic category axis"
-                        |  true, false -> Axes.LogarithmicAxis() :> Axes.Axis
-                        | false,  true -> Axes.CategoryAxis()    :> Axes.Axis
-                        | false, false -> Axes.LinearAxis()      :> Axes.Axis
-                    axis.Position <- position
-
-                    axis
-
                 fun (ch:('T :> GenericChart)) -> 
                     let model = ch.Model
                     let seriesIter f = for s in model.Series do f s
 
-                    let createAxis logRequired categoryAxisRequired isXAxis =
-                        let axis = createAxis logRequired categoryAxisRequired (if isXAxis then Axes.AxisPosition.Bottom else Axes.AxisPosition.Left)
-                        model.Axes.Add axis
-                        axis
-
-                    let ensureDefaultAxis (X) =
-                        let logRequired = if X then defaultArg AxisXLogarithmic false else defaultArg AxisYLogarithmic false
-
-                        let categoryAxisRequired = if X then Option.isSome AxisXLabelFormatter else Option.isSome AxisYLabelFormatter
-
-                        match model.Axes |> Seq.tryFind (fun x -> (if X then x.IsHorizontal() else x.IsVertical()) && x.IsXyAxis()) with 
-                        | None   -> 
-                            createAxis logRequired categoryAxisRequired X
-                        | Some a ->
-                            match a, logRequired, categoryAxisRequired with
-                            |                       _, false, false
-                            | :? Axes.LogarithmicAxis,  true, false
-                            | :? Axes.CategoryAxis,    false,  true -> a
-                            | _, logRequired, categoryAxisRequired ->
-                                model.Axes.Remove a |> ignore
-                                createAxis logRequired categoryAxisRequired X
-
+                    let ensureDefaultAxis =
+                        Helpers.EnsureDefaultAxis
+                            (
+                                model,
+                                ?AxisXLogarithmic    = AxisXLogarithmic,
+                                ?AxisYLogarithmic    = AxisYLogarithmic,
+                                ?AxisXLabelFormatter = AxisXLabelFormatter,
+                                ?AxisYLabelFormatter = AxisYLabelFormatter
+                            )
                     let ensureDefaultXAxis () = ensureDefaultAxis true
                     let ensureDefaultYAxis () = ensureDefaultAxis false
 
                     Color |> Option.iter (fun c -> seriesIter (function 
-                            | :? AreaSeries as s -> s.Fill <- c 
-                            | :? LineSeries as s -> s.Color <- c 
-                            | :? ScatterSeries as s -> s.MarkerFill <- c 
-                            | :? ColumnSeries as s -> s.FillColor <- c
+                            | :? AreaSeries    as s -> s.Fill       <- c
+                            | :? LineSeries    as s -> s.Color      <- c
+                            | :? ScatterSeries as s -> s.MarkerFill <- c
+                            | :? ColumnSeries  as s -> s.FillColor  <- c
+                            | :? BoxPlotSeries as s -> s.Fill       <- c
                             | _ -> ()))
 
                     Name |> Option.iter (fun t -> for s in model.Series do s.Title <- t)
@@ -995,8 +1039,6 @@ namespace FSharp.Charting
            Chart.Bar(indexData data,?Name=Name,?Title=Title,?Labels=Labels, ?Color=Color,?XTitle=XTitle,?YTitle=YTitle)
 
 
-#if INCOMPLETE_API
-
         /// <summary>Consists of one or more box symbols that summarize the distribution of the data within one or more data sets.</summary>
         /// <param name="data">The data for the chart, (xValue, Lower whisker, Upper whisker, Lower box, Upper box, Average, Median).</param>
         /// <param name="Name">The name of the data set.</param>
@@ -1005,17 +1047,41 @@ namespace FSharp.Charting
         /// <param name="Color">The color for the data.</param>
         /// <param name="XTitle">The title of the X-axis.</param>
         /// <param name="YTitle">The title of the Y-axis.</param>
-        static member BoxPlotFromStatistics(data,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?Percentile,?ShowAverage,?ShowMedian,?ShowUnusualValues,?WhiskerPercentile) = 
-            let c = 
-                GenericChart.Create(mergeDataAndLabelsForXY6 data Labels, fun () -> GenericChart(SeriesChartType.BoxPlot))
-                |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
-            Percentile |> Option.iter (fun v -> c.SetCustomProperty<int>("BoxPlotPercentile", v))
-            ShowAverage |> Option.iter (fun v -> c.SetCustomProperty<bool>("BoxPlotShowAverage", v))
-            ShowMedian |> Option.iter (fun v -> c.SetCustomProperty<bool>("BoxPlotShowMedian", v))
-            ShowUnusualValues |> Option.iter (fun v -> c.SetCustomProperty<bool>("BoxPlotShowUnusualValues", v))
-            WhiskerPercentile |> Option.iter (fun v -> c.SetCustomProperty<int>("BoxPlotWhiskerPercentile", v))
-            c
+        static member BoxPlot(data,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?BoxWidth,?StrokeColor,?StrokeThickness,?OutlierSize) = 
 
+            let boxPlotSeries =
+                BoxPlotSeries
+                    (
+                        Title           = "Results",
+                        Stroke          = defaultArg StrokeColor OxyColors.Black,
+                        StrokeThickness = defaultArg StrokeThickness 1.0,
+                        OutlierSize     = defaultArg OutlierSize 2.0,
+                        BoxWidth        = defaultArg BoxWidth 0.4
+                    )
+
+            data |> Seq.iter boxPlotSeries.Items.Add
+
+            let chart =
+                GenericChart.Create(data, boxPlotSeries)
+                |> Helpers.ApplyStyles(?Color = Color, ?Name = Name, ?Title = Title, ?AxisXTitle = XTitle, ?AxisYTitle = YTitle)
+
+            Labels
+            |> Option.iter
+                (
+                    fun labels ->
+                        let categoryAxis = Helpers.EnsureDefaultAxis (chart.Model) true :?> Axes.CategoryAxis // TODO: tidy this up (remove the downcast)
+                        labels |> Seq.iter categoryAxis.Labels.Add
+                )
+            
+//            Percentile        |> Option.iter (fun v -> chart.SetCustomProperty<int>("BoxPlotPercentile"        , v))
+//            ShowAverage       |> Option.iter (fun v -> chart.SetCustomProperty<bool>("BoxPlotShowAverage"      , v))
+//            ShowMedian        |> Option.iter (fun v -> chart.SetCustomProperty<bool>("BoxPlotShowMedian"       , v))
+//            ShowUnusualValues |> Option.iter (fun v -> chart.SetCustomProperty<bool>("BoxPlotShowUnusualValues", v))
+//            WhiskerPercentile |> Option.iter (fun v -> chart.SetCustomProperty<int>("BoxPlotWhiskerPercentile" , v))
+
+            chart
+
+#if INCOMPLETE_API
         /// <summary>Consists of one or more box symbols that summarize the distribution of the data within one or more data sets.</summary>
         /// <param name="data">The data for the chart in the form of a sequence of (xValue, yValues).</param>
         /// <param name="Name">The name of the data set.</param>

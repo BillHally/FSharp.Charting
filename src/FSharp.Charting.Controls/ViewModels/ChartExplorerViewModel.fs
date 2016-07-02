@@ -11,7 +11,7 @@ open FSharp.Charting.ChartTypes
 
 open FSharp.ViewModule
 
-open WpfControls.Editors
+open WpfControls
 open OxyPlot
 
 type Search =
