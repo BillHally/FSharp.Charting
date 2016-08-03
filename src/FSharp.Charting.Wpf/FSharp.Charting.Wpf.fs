@@ -765,18 +765,19 @@ namespace FSharp.Charting
             member public x.SaveChartAs(filename : string, format : ChartImageFormat) =
                 x.Chart.SaveImage(filename, format  |> int |> enum)
 #endif
-            static member Combine (charts : #seq<GenericChart>) =
+            static member Combine (charts : #seq<GenericChart>, ?axesToInclude : int[]) =
                 let charts = charts |> List.ofSeq
+
+                let axesToInclude  = defaultArg axesToInclude [|0|]
 
                 match charts with
                 | []   -> GenericChart(PlotModel())
-//                | [h]  -> h
                 | x ->
                     let primaryChart = GenericChart(PlotModel())
 
-                    x |> List.iter
+                    x |> List.iteri
                         (
-                            fun x ->
+                            fun i x ->
                                 x.Model.Series
                                 |> List.ofSeq // So that when we iterate on the next line, we're not iterating the original sequence - because we're going to modify that
                                 |> List.iter
@@ -786,14 +787,15 @@ namespace FSharp.Charting
                                             primaryChart.Model.Series.Add series
                                     )
 
-                                x.Model.Axes
-                                |> List.ofSeq // ditto
-                                |> List.iter
-                                    (
-                                        fun axis ->
-                                            x.Model.Axes.Remove axis |> ignore
-                                            primaryChart.Model.Axes.Add axis
-                                    )
+                                if axesToInclude |> Array.contains i then
+                                    x.Model.Axes
+                                    |> List.ofSeq // ditto
+                                    |> List.iter
+                                        (
+                                            fun axis ->
+                                                x.Model.Axes.Remove axis |> ignore
+                                                primaryChart.Model.Axes.Add axis
+                                        )
                         )
 
                     primaryChart
