@@ -942,7 +942,7 @@ namespace FSharp.Charting
                     AxisXLabelFormatter |> Option.iter (fun f -> ensureDefaultXAxis().LabelFormatter <- (fun x -> f x))
 
                     AxisYTitle          |> Option.iter (fun t -> ensureDefaultYAxis().Title <- t)
-                    AxisYEnabled        |> Option.iter (fun x -> ensureDefaultXAxis().IsAxisVisible <- x)
+                    AxisYEnabled        |> Option.iter (fun x -> ensureDefaultYAxis().IsAxisVisible <- x)
                     AxisYMinimum        |> Option.iter (fun x -> ensureDefaultYAxis().Minimum <- x)
                     AxisYMaximum        |> Option.iter (fun x -> ensureDefaultYAxis().Maximum <- x)
                     AxisYLabelFormatter |> Option.iter (fun f -> ensureDefaultYAxis().LabelFormatter <- (fun x -> f x))
