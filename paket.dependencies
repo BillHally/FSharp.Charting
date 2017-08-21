@@ -3,10 +3,10 @@ source https://nuget.org/api/v2
 nuget FSharp.Formatting
 nuget FsXaml.Wpf
 nuget NUnit
-nuget NUnit.Runners 
-nuget OxyPlot.GtkSharp 1.0.0-unstable2100
-nuget OxyPlot.Wpf 1.0.0-unstable2100
-nuget OxyPlot.Core 1.0.0-unstable2100
+nuget NUnit.Runners
+nuget OxyPlot.GtkSharp
+nuget OxyPlot.Wpf
+nuget OxyPlot.Core
 nuget Nuget.CommandLine
 nuget FAKE
 nuget FSharp.Control.AsyncSeq
