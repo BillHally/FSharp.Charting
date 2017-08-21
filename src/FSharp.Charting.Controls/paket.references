@@ -1,4 +1,5 @@
-﻿FsXaml.Wpf
+﻿FSharp.Core
+FsXaml.Wpf
 WpfControls.AutoCompleteTextBox
 OxyPlot.Wpf
 FSharp.Control.Reactive

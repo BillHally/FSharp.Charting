@@ -10,4 +10,4 @@
 #r "WindowsBase.dll"
 #r "../../../packages/OxyPlot.Core/lib/net40/OxyPlot.dll"
 #r "../../../packages/OxyPlot.Wpf/lib/net40/OxyPlot.Wpf.dll"
-#r "../../../packages/OxyPlot.Wpf/lib/net40/OxyPlot.Xps.dll"
+#r @"..\..\..\packages\MathNet.Numerics\lib\net40\MathNet.Numerics.dll"

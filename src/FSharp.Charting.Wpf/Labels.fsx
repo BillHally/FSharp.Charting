@@ -3,9 +3,10 @@
 #r "PresentationCore"
 
 #load "Scripts/load-references-release.fsx"
-#r "bin/Release/FSharp.Charting.wpf.dll"
+#load "FSharp.Charting.Wpf.fs"
 
 open System
+open System.Linq
 open FSharp.Charting
 
 module ChartConfiguration =
@@ -120,10 +121,11 @@ let points3 = data3 |> Array.map (fun x -> x.Value)
     { SeriesName = "Label example 4"; Data = Ints points3; Labels = (data3 |> Array.map (fun x -> x :> obj)) }
 ]
 |> List.map (Series.toChart >> Chart.toChart)
-|> Chart.Explore (IsMaximized=true)
+|> Chart.ShowAll (IsMaximized=true)
 
 
 /////////////////////
+open System
 open OxyPlot
 
 let scalePixelValue x = x / (float UInt16.MaxValue)
@@ -147,15 +149,15 @@ let getPoints other =
         )
     
 [0.0..1000.0..65535.0]
-|> List.map
-    (
-        fun x ->
-            let points, labels = getPoints x |> List.unzip
+    |> List.map
+        (
+            fun x ->
+                let points, labels = getPoints x |> List.unzip
 
-            Chart.Point(points, Name = sprintf "%d" (int x), Labels = (labels |> Seq.map (fun x -> x :> obj)), MarkerType = MarkerType.Circle, MarkerSize = 1.0)
-    )
-|> Chart.Combine
-|> Chart.Show (IsMaximized = true)
+                Chart.Point(points, Name = sprintf "%d" (int x), Labels = (labels |> Seq.map (fun x -> x :> obj)), MarkerType = MarkerType.Circle, MarkerSize = 1.0)
+        )
+    |> Chart.Combine
+    |> Chart.Show (IsMaximized = true)
 
 
 [|
@@ -164,7 +166,7 @@ let getPoints other =
     Chart.Point (points2, Labels = (data2 |> Array.map (fun x -> x :> obj)), Title="Label example 3")
     Chart.Point (points3, Labels = (data3 |> Array.map (fun x -> x :> obj)), Title="Label example 4")
 |]
-//|> Chart.ShowAll (IsMaximized=true)
+|> Chart.ShowAll (IsMaximized=true)
 
 open OxyPlot
 open OxyPlot.Annotations
@@ -191,4 +193,29 @@ let createABoxplot () =
     |> Chart.WithXAxis(Title = "Experiment No.")
 
 createABoxplot ()
+|> Chart.Show (IsMaximized = true)
+
+open MathNet.Numerics.Distributions
+open MathNet.Numerics.Random
+open MathNet.Numerics.Statistics
+
+let createABoxplotFromData () =
+
+    let data =
+        [
+            "A", Normal.WithMeanVariance(50.0, 20.0).Samples().Take(10000).ToArray()
+            "B", Normal.WithMeanVariance(75.0, 10.0).Samples().Take(10000).ToArray()
+            "C", Normal.WithMeanVariance(50.0, 20.0).Samples().Take(10000).ToArray()
+            "D", Normal.WithMeanVariance(75.0, 10.0).Samples().Take(10000).ToArray()
+        ]
+    
+    [
+        Chart.BoxPlotFromData(data.[0..1], "A and B", Color = OxyColors.AliceBlue, ShowUnusualValues = true, Offset = -0.2, BoxWidth = 0.3)
+        Chart.BoxPlotFromData(data.[2..3], "C and D", Color = OxyColors.Green,     ShowUnusualValues = true, Offset =  0.2, BoxWidth = 0.3)
+    ]
+    |> Chart.Combine
+    |> Chart.WithTitle("The results")
+    |> Chart.WithXAxis(Title = "Experiment No.")
+
+createABoxplotFromData ()
 |> Chart.Show (IsMaximized = true)

@@ -200,11 +200,17 @@ type internal ChartValueType = Date | Time | DateTime | Auto | Int32 | UInt32 | 
 module internal KeyConversions =
     // Mapping from known runtime types to 'ChartValueType' that is used for the X axis
     // (we try to infer the axis type so that it is displayed nicely)
-    let knownTypes =
-        dict [ typeof<int>, ChartValueType.Int32; typeof<int64>, ChartValueType.Int64
-                typeof<uint32>, ChartValueType.UInt32; typeof<uint64>, ChartValueType.UInt64
-                typeof<float>, ChartValueType.Double; typeof<float32>, ChartValueType.Single
-                typeof<string>, ChartValueType.String ]
+    let knownTypes : IDictionary<Type, ChartValueType> =
+        [
+            typeof<int>,     ChartValueType.Int32
+            typeof<int64>,   ChartValueType.Int64
+            typeof<uint32>,  ChartValueType.UInt32
+            typeof<uint64>,  ChartValueType.UInt64
+            typeof<float>,   ChartValueType.Double
+            typeof<float32>, ChartValueType.Single
+            typeof<string>,  ChartValueType.String
+        ]
+        |> dict
 
     let internal registeredConvertors = System.Collections.Generic.Dictionary<_, key -> key>()
     let tryGetConvertor (typ:System.Type) =
@@ -216,7 +222,7 @@ module internal KeyConversions =
             invalidOp "Registering convertors for known primitive types (int, string, DateTime, ...) is not allowed."
         registeredConvertors.Add(typeof<'T>, fun arg -> f (arg :?> 'T))
 
-        do registerConvertor (fun (dto:DateTimeOffset) -> dto.DateTime :> key)
+    do registerConvertor (fun (dto:DateTimeOffset) -> dto.DateTime :> key)
 
 
 module ChartTypes =
@@ -1048,7 +1054,20 @@ type Chart =
     /// <param name="Color">The color for the data.</param>
     /// <param name="XTitle">The title of the X-axis.</param>
     /// <param name="YTitle">The title of the Y-axis.</param>
-    static member BoxPlot(data,?Name,?Title,?Labels, ?Color,?XTitle,?YTitle,?BoxWidth,?StrokeColor,?StrokeThickness,?OutlierSize) =
+    static member BoxPlot
+        (
+            data,
+            ?Name,
+            ?Title,
+            ?Labels,
+            ?Color,
+            ?XTitle,
+            ?YTitle,
+            ?BoxWidth,
+            ?StrokeColor,
+            ?StrokeThickness,
+            ?OutlierSize
+        ) =
 
         let boxPlotSeries =
             BoxPlotSeries
@@ -1082,7 +1101,6 @@ type Chart =
 
         chart
 
-#if INCOMPLETE_API
     /// <summary>Consists of one or more box symbols that summarize the distribution of the data within one or more data sets.</summary>
     /// <param name="data">The data for the chart in the form of a sequence of (xValue, yValues).</param>
     /// <param name="Name">The name of the data set.</param>
@@ -1091,17 +1109,94 @@ type Chart =
     /// <param name="Color">The color for the data.</param>
     /// <param name="XTitle">The title of the X-axis.</param>
     /// <param name="YTitle">The title of the Y-axis.</param>
-    static member BoxPlotFromData(data,?Name,?Title, (* ?Labels, *) ?Color,?XTitle,?YTitle,?Percentile,?ShowAverage,?ShowMedian,?ShowUnusualValues,?WhiskerPercentile) =
-        let c =
-            GenericChart.Create(mergeDataAndLabelsForXYS data, fun () -> GenericChart(SeriesChartType.BoxPlot))
-            |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
-        Percentile |> Option.iter (fun v -> c.SetCustomProperty<int>("BoxPlotPercentile", v))
-        ShowAverage |> Option.iter (fun v -> c.SetCustomProperty<bool>("BoxPlotShowAverage", v))
-        ShowMedian |> Option.iter (fun v -> c.SetCustomProperty<bool>("BoxPlotShowMedian", v))
-        ShowUnusualValues |> Option.iter (fun v -> c.SetCustomProperty<bool>("BoxPlotShowUnusualValues", v))
-        WhiskerPercentile |> Option.iter (fun v -> c.SetCustomProperty<int>("BoxPlotWhiskerPercentile", v))
-        c
+    static member BoxPlotFromData
+        (
+            data : seq<string * float[]>,
+            ?Name,
+            ?Title,
+            ?Color,
+            ?XTitle,
+            ?YTitle,
+            //?Percentile,
+            ?ShowAverage,
+            ?ShowMedian,
+            ?ShowUnusualValues,
+            //?WhiskerPercentile,
+            ?BoxWidth,
+            ?StrokeColor,
+            ?StrokeThickness,
+            ?OutlierSize,
+            ?Offset
+        ) =
 
+        let boxPlotSeries =
+            BoxPlotSeries
+                (
+                    Title           = "Results",
+                    Stroke          = defaultArg StrokeColor OxyColors.Black,
+                    StrokeThickness = defaultArg StrokeThickness 1.0,
+                    OutlierSize     = defaultArg OutlierSize 2.0,
+                    BoxWidth        = defaultArg BoxWidth 0.4
+                )
+
+        let labels, yValues = data |> Array.ofSeq |> Array.unzip
+
+        let showOutliers = defaultArg ShowUnusualValues false
+        let showMedian = defaultArg ShowMedian true
+        let showMean = defaultArg ShowAverage false
+        let offset = defaultArg Offset 0.0
+
+        let data =
+            yValues
+            |> Seq.mapi
+                (
+                    fun i ys ->
+                        let five = MathNet.Numerics.Statistics.ArrayStatistics.FiveNumberSummaryInplace ys
+
+                        let outliers =
+                            if showOutliers then
+                                five.[0] <- MathNet.Numerics.Statistics.Statistics.Percentile(ys,  1)
+                                five.[4] <- MathNet.Numerics.Statistics.Statistics.Percentile(ys, 99)
+                                ys |> Array.filter (fun x -> x < five.[0] || x > five.[4])
+                            else
+                                [||]
+
+                        let item =
+                            BoxPlotItem
+                                (
+                                    float i + offset,
+                                    five.[0],
+                                    five.[1],
+                                    (if showMedian then five.[2] else Double.NaN),
+                                    five.[3],
+                                    five.[4],
+                                    Outliers = outliers
+                                )
+
+                        if showMean then
+                            item.Mean <- MathNet.Numerics.Statistics.ArrayStatistics.Mean ys
+
+                        item
+                )
+            |> Array.ofSeq
+
+        data |> Array.iter boxPlotSeries.Items.Add
+
+        let chart =
+            GenericChart.Create(data, boxPlotSeries)
+            |> Helpers.ApplyStyles(?Color = Color, ?Name = Name, ?Title = Title, ?AxisXTitle = XTitle, ?AxisYTitle = YTitle)
+
+        let categoryAxis = Helpers.EnsureDefaultAxis (chart.Model) true :?> Axes.CategoryAxis // TODO: tidy this up (remove the downcast)
+        labels |> Seq.iter categoryAxis.Labels.Add
+
+        //Percentile |> Option.iter (fun v -> chart.SetCustomProperty<int>("BoxPlotPercentile", v))
+        //ShowAverage |> Option.iter (fun v -> chart.SetCustomProperty<bool>("BoxPlotShowAverage", v))
+        //ShowMedian |> Option.iter (fun v -> chart.SetCustomProperty<bool>("BoxPlotShowMedian", v))
+        //ShowUnusualValues |> Option.iter (fun v -> chart.SetCustomProperty<bool>("BoxPlotShowUnusualValues", v))
+        //WhiskerPercentile |> Option.iter (fun v -> chart.SetCustomProperty<int>("BoxPlotWhiskerPercentile", v))
+        chart
+
+#if INCOMPLETE_API
     static member internal ConfigureBubble(c:GenericChart,vBubbleMaxSize,vBubbleMinSize,vBubbleScaleMax,vBubbleScaleMin,vBubbleUseSizeForLabel) =
         vBubbleMaxSize |> Option.iter (fun v -> c.SetCustomProperty<int>("BubbleMaxSize", v))
         vBubbleMinSize |> Option.iter (fun v -> c.SetCustomProperty<int>("BubbleMinSize", v))

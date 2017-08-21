@@ -1,7 +1,11 @@
 source https://nuget.org/api/v2
 
+framework: net461
+
+nuget FSharp.Core
 nuget FSharp.Formatting
 nuget FsXaml.Wpf
+nuget MathNet.Numerics
 nuget NUnit
 nuget NUnit.Runners
 nuget OxyPlot.GtkSharp
