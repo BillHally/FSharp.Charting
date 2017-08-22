@@ -75,7 +75,9 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="FSharp.Charting.Wpf.fs" />
-    <None Include="FSharp.Charting.Wpf.fsx" />
+    <None Include="FSharp.Charting.Wpf.fsx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="Labels.fsx" />
     <None Include="paket.references" />
     <None Include="Scripts\load-references-release.fsx" />

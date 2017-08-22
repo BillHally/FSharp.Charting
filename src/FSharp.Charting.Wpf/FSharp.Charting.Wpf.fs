@@ -1117,16 +1117,16 @@ type Chart =
             ?Color,
             ?XTitle,
             ?YTitle,
-            //?Percentile,
+            ?Percentile,
             ?ShowAverage,
             ?ShowMedian,
             ?ShowUnusualValues,
-            //?WhiskerPercentile,
+            ?WhiskerPercentile,
             ?BoxWidth,
             ?StrokeColor,
             ?StrokeThickness,
             ?OutlierSize,
-            ?Offset
+            ?XOffset
         ) =
 
         let boxPlotSeries =
@@ -1144,32 +1144,38 @@ type Chart =
         let showOutliers = defaultArg ShowUnusualValues false
         let showMedian = defaultArg ShowMedian true
         let showMean = defaultArg ShowAverage false
-        let offset = defaultArg Offset 0.0
+        let xOffset = defaultArg XOffset 0.0
+        let whiskerPercentile = defaultArg WhiskerPercentile 10
+        let percentile = defaultArg Percentile 25
 
         let data =
             yValues
             |> Seq.mapi
                 (
                     fun i ys ->
-                        let five = MathNet.Numerics.Statistics.ArrayStatistics.FiveNumberSummaryInplace ys
 
-                        let outliers =
-                            if showOutliers then
-                                five.[0] <- MathNet.Numerics.Statistics.Statistics.Percentile(ys,  1)
-                                five.[4] <- MathNet.Numerics.Statistics.Statistics.Percentile(ys, 99)
-                                ys |> Array.filter (fun x -> x < five.[0] || x > five.[4])
-                            else
-                                [||]
+                        let x = float i + xOffset
+
+                        let ys = ys |> Array.sort
+
+                        let lowerWhisker = MathNet.Numerics.Statistics.SortedArrayStatistics.Percentile(ys,       whiskerPercentile)
+                        let boxBottom    = MathNet.Numerics.Statistics.SortedArrayStatistics.Percentile(ys,       percentile)
+                        let median       = if showMedian then MathNet.Numerics.Statistics.SortedArrayStatistics.Median ys else Double.NaN
+                        let boxTop       = MathNet.Numerics.Statistics.SortedArrayStatistics.Percentile(ys, 100 - percentile)
+                        let upperWhisker = MathNet.Numerics.Statistics.SortedArrayStatistics.Percentile(ys, 100 - whiskerPercentile)
+
+                        let outliers =  if showOutliers then ys |> Array.filter (fun x -> x < lowerWhisker || x > upperWhisker) else [||]
+
 
                         let item =
                             BoxPlotItem
                                 (
-                                    float i + offset,
-                                    five.[0],
-                                    five.[1],
-                                    (if showMedian then five.[2] else Double.NaN),
-                                    five.[3],
-                                    five.[4],
+                                    x,
+                                    lowerWhisker,
+                                    boxBottom,
+                                    median,
+                                    boxTop,
+                                    upperWhisker,
                                     Outliers = outliers
                                 )
 
