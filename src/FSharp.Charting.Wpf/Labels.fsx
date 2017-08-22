@@ -4,11 +4,19 @@
 
 #load "Scripts/load-references-release.fsx"
 #load "FSharp.Charting.Wpf.fs"
-
+//#r "bin/Release/FSharp.Charting.Wpf.dll"
 open System
 open System.Linq
+
+open MathNet.Numerics.Distributions
+open MathNet.Numerics.Random
+open MathNet.Numerics.Statistics
+
+open OxyPlot
+
 open FSharp.Charting
 
+#if MEH
 module ChartConfiguration =
     type Axis =
         {
@@ -198,10 +206,6 @@ if false then
     createABoxplot ()
     |> Chart.Show (IsMaximized = true)
 
-open MathNet.Numerics.Distributions
-open MathNet.Numerics.Random
-open MathNet.Numerics.Statistics
-
 let createABoxplotFromData () =
 
     let blueData =
@@ -230,8 +234,7 @@ if false then
     createABoxplotFromData ()
     |> Chart.Show (IsMaximized = true)
 
-let createABoxplotFromData' () =
-
+if false then
     let blueData =
         [
             1.0, Normal.WithMeanVariance(50.0, 20.0).Samples().Take(10000).ToArray()
@@ -253,6 +256,17 @@ let createABoxplotFromData' () =
     |> Chart.Combine
     |> Chart.WithTitle("The results")
     |> Chart.WithXAxis(Title = "Experiment No.")
+    |> Chart.Show (IsMaximized = true)
+#endif
 
-createABoxplotFromData' ()
-|> Chart.Show (IsMaximized = true)
+if true then
+    let data =
+        [
+            for x in 0..1000..65535 do
+                yield (float x, Normal.WithMeanVariance(float x, 100000000.0).Samples().Take(10000) |> Array.ofSeq)
+        ]
+
+    Chart.BoxPlotFromData(data, "Blue", Color = OxyColors.AliceBlue, ShowUnusualValues = false, BoxWidth = 65535.0 / ((float data.Length)) * 0.8)
+    |> Chart.WithTitle("The results")
+    |> Chart.WithXAxis(Title = "Experiment No.")
+    |> Chart.Show (IsMaximized = true)

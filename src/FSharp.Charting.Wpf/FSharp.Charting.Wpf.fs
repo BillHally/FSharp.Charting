@@ -852,9 +852,9 @@ type internal Helpers() =
         (
             model : PlotModel,
             ?AxisXLogarithmic : bool,
+            ?AxisXCategorical : bool,
             ?AxisYLogarithmic : bool,
-            ?AxisXLabelFormatter : float -> string,
-            ?AxisYLabelFormatter : float -> string
+            ?AxisYCategorical : bool
         )
         =
         fun isXAxis ->
@@ -867,12 +867,9 @@ type internal Helpers() =
 
             let categoryAxisRequired =
                 if isXAxis then
-                    if model.Series |> Seq.tryFind (fun x -> match x :> obj with | :? BoxPlotSeries -> true | _ -> false) |> Option.isSome then
-                        true
-                    else
-                        Option.isSome AxisXLabelFormatter
+                    defaultArg AxisXCategorical false
                 else
-                    Option.isSome AxisYLabelFormatter
+                    defaultArg AxisYCategorical false
 
             match model.Axes |> Seq.tryFind (fun x -> (if isXAxis then x.IsHorizontal() else x.IsVertical()) && x.IsXyAxis()) with
             | None   ->
@@ -880,8 +877,8 @@ type internal Helpers() =
             | Some a ->
                 match a, logRequired, categoryAxisRequired with
                 |                       _, false, false
-                | :? Axes.LogarithmicAxis,  true, false
-                | :? Axes.CategoryAxis,    false,  true -> a
+                | :? Axes.LogarithmicAxis,     _,     _
+                | :? Axes.CategoryAxis,        _,     _ -> a // Never remove a Logarithmic or Category axis - they must have been specifically set
                 | _, logRequired, categoryAxisRequired ->
                     model.Axes.Remove a |> ignore
                     createAxis logRequired categoryAxisRequired isXAxis
@@ -897,12 +894,14 @@ type internal Helpers() =
             ?AxisXTitle,
             ?AxisXEnabled : bool,
             ?AxisXLogarithmic : bool,
+            ?AxisXCategorical : bool,
             ?AxisXMinimum : float,
             ?AxisXMaximum : float,
             ?AxisXLabelFormatter : float -> string,
             ?AxisYTitle,
             ?AxisYEnabled : bool,
             ?AxisYLogarithmic : bool,
+            ?AxisYCategorical : bool,
             ?AxisYMinimum : float,
             ?AxisYMaximum : float,
             ?AxisYLabelFormatter: float -> string,
@@ -918,10 +917,10 @@ type internal Helpers() =
                     Helpers.EnsureDefaultAxis
                         (
                             model,
-                            ?AxisXLogarithmic    = AxisXLogarithmic,
-                            ?AxisYLogarithmic    = AxisYLogarithmic,
-                            ?AxisXLabelFormatter = AxisXLabelFormatter,
-                            ?AxisYLabelFormatter = AxisYLabelFormatter
+                            ?AxisXLogarithmic = AxisXLogarithmic,
+                            ?AxisXCategorical = AxisXCategorical,
+                            ?AxisYLogarithmic = AxisYLogarithmic,
+                            ?AxisYCategorical = AxisYCategorical
                         )
                 let ensureDefaultXAxis () = ensureDefaultAxis true
                 let ensureDefaultYAxis () = ensureDefaultAxis false
@@ -1083,7 +1082,7 @@ type Chart =
 
         let chart =
             GenericChart.Create(data, boxPlotSeries)
-            |> Helpers.ApplyStyles(?Color = Color, ?Name = Name, ?Title = Title, ?AxisXTitle = XTitle, ?AxisYTitle = YTitle)
+            |> Helpers.ApplyStyles(?Color = Color, ?Name = Name, ?Title = Title, ?AxisXTitle = XTitle, ?AxisYTitle = YTitle, AxisXCategorical = true)
 
         Labels
         |> Option.iter
@@ -1176,7 +1175,7 @@ type Chart =
 
         let chart =
             GenericChart.Create(data, boxPlotSeries)
-            |> Helpers.ApplyStyles(?Color = Color, ?Name = Name, ?Title = Title, ?AxisXTitle = XTitle, ?AxisYTitle = YTitle)
+            |> Helpers.ApplyStyles(?Color = Color, ?Name = Name, ?Title = Title, ?AxisXTitle = XTitle, ?AxisYTitle = YTitle, AxisXCategorical = true)
 
         let categoryAxis = Helpers.EnsureDefaultAxis (chart.Model) true :?> Axes.CategoryAxis // TODO: tidy this up (remove the downcast)
         labels |> Seq.iter categoryAxis.Labels.Add
@@ -1257,18 +1256,12 @@ type Chart =
 
         data |> Array.iter boxPlotSeries.Items.Add
 
-        let chart =
-            GenericChart.Create(data, boxPlotSeries)
-            |> Helpers.ApplyStyles(?Color = Color, ?Name = Name, ?Title = Title, ?AxisXTitle = XTitle, ?AxisYTitle = YTitle)
-
-        let xAxis = Helpers.EnsureDefaultAxis (chart.Model) true :?> Axes.LinearAxis // TODO: tidy this up (remove the downcast)
-        xAxis.LabelFormatter <- (fun x -> string x)
-
-        chart
+        GenericChart.Create(data, boxPlotSeries)
+        |> Helpers.ApplyStyles(?Color = Color, ?Name = Name, ?Title = Title, ?AxisXTitle = XTitle, ?AxisYTitle = YTitle, AxisXCategorical = false)
 
     static member BoxPlotFromData
         (
-            data : #seq<float * float[]>,
+            data : seq<float * float[]>,
             ?Name,
             ?Title,
             ?Color,
@@ -1350,7 +1343,48 @@ type Chart =
 
     static member BoxPlotFromData
         (
-            data : #seq<int * #seq<uint16>>,
+            data : seq<(float * #seq<float>)>,
+            ?Name,
+            ?Title,
+            ?Color,
+            ?XTitle,
+            ?YTitle,
+            ?Percentile,
+            ?ShowAverage,
+            ?ShowMedian,
+            ?ShowUnusualValues,
+            ?WhiskerPercentile,
+            ?BoxWidth,
+            ?StrokeColor,
+            ?StrokeThickness,
+            ?OutlierSize,
+            ?XOffset
+        ) =
+            let data : (float * float[])[] = data |> Seq.map (fun (x, ys) -> (float x), (ys |> Array.ofSeq)) |> Array.ofSeq
+
+            Chart.BoxPlotFromData
+                (
+                    data,
+                    ?Name              = Name,
+                    ?Title             = Title,
+                    ?Color             = Color,
+                    ?XTitle            = XTitle,
+                    ?YTitle            = YTitle,
+                    ?Percentile        = Percentile,
+                    ?ShowAverage       = ShowAverage,
+                    ?ShowMedian        = ShowMedian,
+                    ?ShowUnusualValues = ShowUnusualValues,
+                    ?WhiskerPercentile = WhiskerPercentile,
+                    ?BoxWidth          = BoxWidth,
+                    ?StrokeColor       = StrokeColor,
+                    ?StrokeThickness   = StrokeThickness,
+                    ?OutlierSize       = OutlierSize,
+                    ?XOffset           = XOffset
+                )
+
+    static member BoxPlotFromData
+        (
+            data : seq<int * #seq<uint16>>,
             ?Name,
             ?Title,
             ?Color,
