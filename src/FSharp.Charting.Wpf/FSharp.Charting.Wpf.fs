@@ -1191,7 +1191,7 @@ type Chart =
 
     static member BoxPlotFromData
         (
-            data : seq<float * float[]>,
+            data : #seq<float * float[]>,
             ?Name,
             ?Title,
             ?Color,
@@ -1269,7 +1269,7 @@ type Chart =
 
     static member BoxPlotFromData
         (
-            data : seq<int * seq<uint16>>,
+            data : #seq<int * #seq<uint16>>,
             ?Name,
             ?Title,
             ?Color,
