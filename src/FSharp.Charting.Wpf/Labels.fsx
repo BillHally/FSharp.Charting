@@ -114,14 +114,15 @@ let points3 = data3 |> Array.map (fun x -> x.Value)
 //|]
 //|> Chart.Explore (IsMaximized=true)
 
-[
-    { SeriesName = "Label example 1"; Data = Ints points0; Labels = (data0 |> Array.map (fun x -> x :> obj)) }
-    { SeriesName = "Label example 2"; Data = Ints points1; Labels = (data1 |> Array.map (fun x -> x :> obj)) }
-    { SeriesName = "Label example 3"; Data = Ints points2; Labels = (data2 |> Array.map (fun x -> x :> obj)) }
-    { SeriesName = "Label example 4"; Data = Ints points3; Labels = (data3 |> Array.map (fun x -> x :> obj)) }
-]
-|> List.map (Series.toChart >> Chart.toChart)
-|> Chart.ShowAll (IsMaximized=true)
+if false then
+    [
+        { SeriesName = "Label example 1"; Data = Ints points0; Labels = (data0 |> Array.map (fun x -> x :> obj)) }
+        { SeriesName = "Label example 2"; Data = Ints points1; Labels = (data1 |> Array.map (fun x -> x :> obj)) }
+        { SeriesName = "Label example 3"; Data = Ints points2; Labels = (data2 |> Array.map (fun x -> x :> obj)) }
+        { SeriesName = "Label example 4"; Data = Ints points3; Labels = (data3 |> Array.map (fun x -> x :> obj)) }
+    ]
+    |> List.map (Series.toChart >> Chart.toChart)
+    |> Chart.ShowAll (IsMaximized=true)
 
 
 /////////////////////
@@ -147,26 +148,27 @@ let getPoints other =
                 let normalizedRatio = normalize x other
                 (x, normalizedRatio), sprintf "x: %f\r\nOther value: %f\r\nNormalized ratio: %f" x other normalizedRatio
         )
-    
-[0.0..1000.0..65535.0]
-    |> List.map
-        (
-            fun x ->
-                let points, labels = getPoints x |> List.unzip
 
-                Chart.Point(points, Name = sprintf "%d" (int x), Labels = (labels |> Seq.map (fun x -> x :> obj)), MarkerType = MarkerType.Circle, MarkerSize = 1.0)
-        )
-    |> Chart.Combine
-    |> Chart.Show (IsMaximized = true)
+if false then    
+    [0.0..1000.0..65535.0]
+        |> List.map
+            (
+                fun x ->
+                    let points, labels = getPoints x |> List.unzip
 
+                    Chart.Point(points, Name = sprintf "%d" (int x), Labels = (labels |> Seq.map (fun x -> x :> obj)), MarkerType = MarkerType.Circle, MarkerSize = 1.0)
+            )
+        |> Chart.Combine
+        |> Chart.Show (IsMaximized = true)
 
-[|
-    Chart.Point (points0, Labels = (data0 |> Array.map (fun x -> x :> obj)), Title="Label example 1")
-    Chart.Point (points1, Labels = (data1 |> Array.map (fun x -> x :> obj)), Title="Label example 2")
-    Chart.Point (points2, Labels = (data2 |> Array.map (fun x -> x :> obj)), Title="Label example 3")
-    Chart.Point (points3, Labels = (data3 |> Array.map (fun x -> x :> obj)), Title="Label example 4")
-|]
-|> Chart.ShowAll (IsMaximized=true)
+if false then
+    [|
+        Chart.Point (points0, Labels = (data0 |> Array.map (fun x -> x :> obj)), Title="Label example 1")
+        Chart.Point (points1, Labels = (data1 |> Array.map (fun x -> x :> obj)), Title="Label example 2")
+        Chart.Point (points2, Labels = (data2 |> Array.map (fun x -> x :> obj)), Title="Label example 3")
+        Chart.Point (points3, Labels = (data3 |> Array.map (fun x -> x :> obj)), Title="Label example 4")
+    |]
+    |> Chart.ShowAll (IsMaximized=true)
 
 open OxyPlot
 open OxyPlot.Annotations
@@ -192,8 +194,9 @@ let createABoxplot () =
     |> Chart.WithTitle("The results")
     |> Chart.WithXAxis(Title = "Experiment No.")
 
-createABoxplot ()
-|> Chart.Show (IsMaximized = true)
+if false then
+    createABoxplot ()
+    |> Chart.Show (IsMaximized = true)
 
 open MathNet.Numerics.Distributions
 open MathNet.Numerics.Random
@@ -207,24 +210,25 @@ let createABoxplotFromData () =
             "B", Normal.WithMeanVariance(75.0, 10.0).Samples().Take(10000).ToArray()
         ]
 
-    let redData =
+    let greenData =
         [
             "A", Normal.WithMeanVariance(50.0, 20.0).Samples().Take(10000).ToArray()
             "B", Normal.WithMeanVariance(75.0, 10.0).Samples().Take(10000).ToArray()
         ]
 
     [
-        Chart.BoxPlotFromData(blueData, "A and B",       Color = OxyColors.AliceBlue,     ShowUnusualValues = true, XOffset = -0.4, BoxWidth = 0.15)
-        Chart.BoxPlotFromData(redData,  "C and D",       Color = OxyColors.Green,         ShowUnusualValues = true, XOffset = -0.2, BoxWidth = 0.15)
-        Chart.BoxPlotFromData(blueData, "A and B (alt)", Color = OxyColors.BlueViolet,    ShowUnusualValues = true, XOffset =  0.2, BoxWidth = 0.15, Percentile=30, WhiskerPercentile = 1)
-        Chart.BoxPlotFromData(redData,  "C and D (alt)", Color = OxyColors.LightSeaGreen, ShowUnusualValues = true, XOffset =  0.4, BoxWidth = 0.15, Percentile=30, WhiskerPercentile = 1)
+        Chart.BoxPlotFromData(blueData,  "Blue",        Color = OxyColors.AliceBlue,     ShowUnusualValues = true, XOffset = -0.4, BoxWidth = 0.15)
+        Chart.BoxPlotFromData(greenData, "Green",       Color = OxyColors.Green,         ShowUnusualValues = true, XOffset = -0.2, BoxWidth = 0.15)
+        Chart.BoxPlotFromData(blueData,  "Blue (alt)",  Color = OxyColors.BlueViolet,    ShowUnusualValues = true, XOffset =  0.2, BoxWidth = 0.15, Percentile=30, WhiskerPercentile = 1)
+        Chart.BoxPlotFromData(greenData, "Green (alt)", Color = OxyColors.LightSeaGreen, ShowUnusualValues = true, XOffset =  0.4, BoxWidth = 0.15, Percentile=30, WhiskerPercentile = 1)
     ]
     |> Chart.Combine
     |> Chart.WithTitle("The results")
     |> Chart.WithXAxis(Title = "Experiment No.")
 
-createABoxplotFromData ()
-|> Chart.Show (IsMaximized = true)
+if false then
+    createABoxplotFromData ()
+    |> Chart.Show (IsMaximized = true)
 
 let createABoxplotFromData' () =
 
@@ -234,17 +238,17 @@ let createABoxplotFromData' () =
             2.5, Normal.WithMeanVariance(75.0, 10.0).Samples().Take(10000).ToArray()
         ]
 
-    let redData =
+    let greenData =
         [
             1.0, Normal.WithMeanVariance(50.0, 20.0).Samples().Take(10000).ToArray()
             2.5, Normal.WithMeanVariance(75.0, 10.0).Samples().Take(10000).ToArray()
         ]
 
     [
-        Chart.BoxPlotFromData(blueData, "A and B",       Color = OxyColors.AliceBlue,     ShowUnusualValues = true, XOffset = -0.4, BoxWidth = 0.15)
-        Chart.BoxPlotFromData(redData,  "C and D",       Color = OxyColors.Green,         ShowUnusualValues = true, XOffset = -0.2, BoxWidth = 0.15)
-        Chart.BoxPlotFromData(blueData, "A and B (alt)", Color = OxyColors.BlueViolet,    ShowUnusualValues = true, XOffset =  0.2, BoxWidth = 0.15, Percentile=30, WhiskerPercentile = 1)
-        Chart.BoxPlotFromData(redData,  "C and D (alt)", Color = OxyColors.LightSeaGreen, ShowUnusualValues = true, XOffset =  0.4, BoxWidth = 0.15, Percentile=30, WhiskerPercentile = 1)
+        Chart.BoxPlotFromData(blueData,  "Blue",        Color = OxyColors.AliceBlue,     ShowUnusualValues = true, XOffset = -0.4, BoxWidth = 0.15)
+        Chart.BoxPlotFromData(greenData, "Green",       Color = OxyColors.Green,         ShowUnusualValues = true, XOffset = -0.2, BoxWidth = 0.15)
+        Chart.BoxPlotFromData(blueData,  "Blue (alt)",  Color = OxyColors.BlueViolet,    ShowUnusualValues = true, XOffset =  0.2, BoxWidth = 0.15, Percentile=30, WhiskerPercentile = 1)
+        Chart.BoxPlotFromData(greenData, "Green (alt)", Color = OxyColors.LightSeaGreen, ShowUnusualValues = true, XOffset =  0.4, BoxWidth = 0.15, Percentile=30, WhiskerPercentile = 1)
     ]
     |> Chart.Combine
     |> Chart.WithTitle("The results")

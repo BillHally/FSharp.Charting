@@ -1093,12 +1093,6 @@ type Chart =
                     labels |> Seq.iter categoryAxis.Labels.Add
             )
 
-//            Percentile        |> Option.iter (fun v -> chart.SetCustomProperty<int>("BoxPlotPercentile"        , v))
-//            ShowAverage       |> Option.iter (fun v -> chart.SetCustomProperty<bool>("BoxPlotShowAverage"      , v))
-//            ShowMedian        |> Option.iter (fun v -> chart.SetCustomProperty<bool>("BoxPlotShowMedian"       , v))
-//            ShowUnusualValues |> Option.iter (fun v -> chart.SetCustomProperty<bool>("BoxPlotShowUnusualValues", v))
-//            WhiskerPercentile |> Option.iter (fun v -> chart.SetCustomProperty<int>("BoxPlotWhiskerPercentile" , v))
-
         chart
 
     static member BoxPlotFromData
@@ -1191,7 +1185,7 @@ type Chart =
 
     static member BoxPlotFromData
         (
-            data : #seq<float * float[]>,
+            data : (float * float[])[],
             ?Name,
             ?Title,
             ?Color,
@@ -1228,7 +1222,7 @@ type Chart =
 
         let data =
             data
-            |> Seq.map
+            |> Array.map
                 (
                     fun (x, ys) ->
 
@@ -1260,12 +1254,99 @@ type Chart =
 
                         item
                 )
-            |> Array.ofSeq
 
         data |> Array.iter boxPlotSeries.Items.Add
 
-        GenericChart.Create(data, boxPlotSeries)
-        |> Helpers.ApplyStyles(?Color = Color, ?Name = Name, ?Title = Title, ?AxisXTitle = XTitle, ?AxisYTitle = YTitle)
+        let chart =
+            GenericChart.Create(data, boxPlotSeries)
+            |> Helpers.ApplyStyles(?Color = Color, ?Name = Name, ?Title = Title, ?AxisXTitle = XTitle, ?AxisYTitle = YTitle)
+
+        let xAxis = Helpers.EnsureDefaultAxis (chart.Model) true :?> Axes.LinearAxis // TODO: tidy this up (remove the downcast)
+        xAxis.LabelFormatter <- (fun x -> string x)
+
+        chart
+
+    static member BoxPlotFromData
+        (
+            data : #seq<float * float[]>,
+            ?Name,
+            ?Title,
+            ?Color,
+            ?XTitle,
+            ?YTitle,
+            ?Percentile,
+            ?ShowAverage,
+            ?ShowMedian,
+            ?ShowUnusualValues,
+            ?WhiskerPercentile,
+            ?BoxWidth,
+            ?StrokeColor,
+            ?StrokeThickness,
+            ?OutlierSize,
+            ?XOffset
+        ) =
+            let data : (float * float[])[] = data |> Array.ofSeq
+
+            Chart.BoxPlotFromData
+                (
+                    data,
+                    ?Name              = Name,
+                    ?Title             = Title,
+                    ?Color             = Color,
+                    ?XTitle            = XTitle,
+                    ?YTitle            = YTitle,
+                    ?Percentile        = Percentile,
+                    ?ShowAverage       = ShowAverage,
+                    ?ShowMedian        = ShowMedian,
+                    ?ShowUnusualValues = ShowUnusualValues,
+                    ?WhiskerPercentile = WhiskerPercentile,
+                    ?BoxWidth          = BoxWidth,
+                    ?StrokeColor       = StrokeColor,
+                    ?StrokeThickness   = StrokeThickness,
+                    ?OutlierSize       = OutlierSize,
+                    ?XOffset           = XOffset
+                )
+
+    static member BoxPlotFromData
+        (
+            data : (float * #seq<float>)[],
+            ?Name,
+            ?Title,
+            ?Color,
+            ?XTitle,
+            ?YTitle,
+            ?Percentile,
+            ?ShowAverage,
+            ?ShowMedian,
+            ?ShowUnusualValues,
+            ?WhiskerPercentile,
+            ?BoxWidth,
+            ?StrokeColor,
+            ?StrokeThickness,
+            ?OutlierSize,
+            ?XOffset
+        ) =
+            let data : (float * float[])[] = data |> Array.map (fun (x, ys) -> (float x), (ys |> Array.ofSeq))
+
+            Chart.BoxPlotFromData
+                (
+                    data,
+                    ?Name              = Name,
+                    ?Title             = Title,
+                    ?Color             = Color,
+                    ?XTitle            = XTitle,
+                    ?YTitle            = YTitle,
+                    ?Percentile        = Percentile,
+                    ?ShowAverage       = ShowAverage,
+                    ?ShowMedian        = ShowMedian,
+                    ?ShowUnusualValues = ShowUnusualValues,
+                    ?WhiskerPercentile = WhiskerPercentile,
+                    ?BoxWidth          = BoxWidth,
+                    ?StrokeColor       = StrokeColor,
+                    ?StrokeThickness   = StrokeThickness,
+                    ?OutlierSize       = OutlierSize,
+                    ?XOffset           = XOffset
+                )
 
     static member BoxPlotFromData
         (
@@ -1286,7 +1367,7 @@ type Chart =
             ?OutlierSize,
             ?XOffset
         ) =
-            let data = data |> Seq.map (fun (x, ys) -> (float x), (ys |> Seq.map float |> Array.ofSeq))
+            let data : (float * float[])[] = data |> Seq.map (fun (x, ys) -> (float x), (ys |> Seq.map float |> Array.ofSeq)) |> Array.ofSeq
 
             Chart.BoxPlotFromData
                 (
