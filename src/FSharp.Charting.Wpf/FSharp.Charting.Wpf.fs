@@ -898,6 +898,7 @@ type internal Helpers() =
             ?AxisXMinimum : float,
             ?AxisXMaximum : float,
             ?AxisXLabelFormatter : float -> string,
+            ?AxisXLabelAngle : float,
             ?AxisYTitle,
             ?AxisYEnabled : bool,
             ?AxisYLogarithmic : bool,
@@ -905,6 +906,7 @@ type internal Helpers() =
             ?AxisYMinimum : float,
             ?AxisYMaximum : float,
             ?AxisYLabelFormatter: float -> string,
+            ?AxisYLabelAngle : float,
             ?InsideArea : bool,
             ?LegendEnabled : bool,
             ?LegendPosition : Position
@@ -946,12 +948,14 @@ type internal Helpers() =
                 AxisXMinimum        |> Option.iter (fun x -> ensureDefaultXAxis().Minimum <- x)
                 AxisXMaximum        |> Option.iter (fun x -> ensureDefaultXAxis().Maximum <- x)
                 AxisXLabelFormatter |> Option.iter (fun f -> ensureDefaultXAxis().LabelFormatter <- (fun x -> f x))
+                AxisXLabelAngle     |> Option.iter (fun x -> ensureDefaultXAxis().Angle <- x)
 
                 AxisYTitle          |> Option.iter (fun t -> ensureDefaultYAxis().Title <- t)
                 AxisYEnabled        |> Option.iter (fun x -> ensureDefaultYAxis().IsAxisVisible <- x)
                 AxisYMinimum        |> Option.iter (fun x -> ensureDefaultYAxis().Minimum <- x)
                 AxisYMaximum        |> Option.iter (fun x -> ensureDefaultYAxis().Maximum <- x)
                 AxisYLabelFormatter |> Option.iter (fun f -> ensureDefaultYAxis().LabelFormatter <- (fun x -> f x))
+                AxisYLabelAngle     |> Option.iter (fun x -> ensureDefaultYAxis().Angle <- x)
 
                 InsideArea |> Option.iter (fun x -> model.LegendPlacement <- (if x then LegendPlacement.Inside else LegendPlacement.Outside))
 
@@ -2572,14 +2576,34 @@ type Chart =
     /// <param name="TitleColor">The color of the title of the axis</param>
     /// <param name="Tooltip">The tooltip to use for the axis</param>
     static member WithXAxis
-        (?Enabled, ?Title, ?Max, ?Min, ?Log, ?LabelFormatter (*, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark,
-            ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip *)) =
+        (
+            ?Enabled,
+            ?Title,
+            ?Max,
+            ?Min,
+            ?Log,
+            ?LabelFormatter,
+            ?LabelAngle
+            //TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark,
+            //?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip
+        )
+        =
 
         // TODO: let titleFont = StyleHelper.OptionalFont(?Name=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle)
 
         fun (ch : #GenericChart) ->
-            ch |> Helpers.ApplyStyles(?AxisXLogarithmic=Log, ?AxisXEnabled=Enabled, ?AxisXLabelFormatter=LabelFormatter,(* TODO: ?AxisXArrowStyle=ArrowStyle, ?AxisXLabelStyle=LabelStyle, (* ?AxisXIsMarginVisible=IsMarginVisible, *)*) ?AxisXMaximum=Max, ?AxisXMinimum=Min, (* TODO: , ?AxisXMajorGrid=MajorGrid, ?AxisXMinorGrid=MinorGrid, ?AxisXMajorTickMark=MajorTickMark, ?AxisXMinorTickMark=MinorTickMark,  *)
-                                    ?AxisXTitle=Title (* TODO: , ?AxisXTitleAlignment=TitleAlignment, ?AxisXTitleFont=titleFont, ?AxisXTitleForeColor=TitleColor, ?AxisXToolTip=ToolTip *))
+            ch
+            |> Helpers.ApplyStyles
+                (
+                    ?AxisXLogarithmic=Log,
+                    ?AxisXEnabled=Enabled,
+                    ?AxisXLabelFormatter=LabelFormatter,
+                    ?AxisXLabelAngle=LabelAngle,
+                    (* TODO: ?AxisXArrowStyle=ArrowStyle, ?AxisXLabelStyle=LabelStyle, (* ?AxisXIsMarginVisible=IsMarginVisible, *)*)
+                    ?AxisXMaximum=Max,
+                    ?AxisXMinimum=Min, (* TODO: , ?AxisXMajorGrid=MajorGrid, ?AxisXMinorGrid=MinorGrid, ?AxisXMajorTickMark=MajorTickMark, ?AxisXMinorTickMark=MinorTickMark,  *)
+                    ?AxisXTitle=Title (* TODO: , ?AxisXTitleAlignment=TitleAlignment, ?AxisXTitleFont=titleFont, ?AxisXTitleForeColor=TitleColor, ?AxisXToolTip=ToolTip *)
+                )
 
         /// <summary>Apply styling to the Y Axis</summary>
         /// <param name="Enabled">If false, disables the axis</param>
@@ -2599,13 +2623,35 @@ type Chart =
         /// <param name="TitleColor">The color of the title of the axis</param>
         /// <param name="Tooltip">The tooltip to use for the axis</param>
     static member WithYAxis
-        (?Enabled, ?Title, ?Max, ?Min, ?Log, ?LabelFormatter (*, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark,
-            ?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip)*)) =
+        (
+            ?Enabled,
+            ?Title,
+            ?Max,
+            ?Min,
+            ?Log,
+            ?LabelFormatter,
+            ?LabelAngle
+            //, TODO: ?ArrowStyle:AxisArrowStyle, ?LabelStyle:LabelStyle,(* ?IsMarginVisible, *) ?MajorGrid:Grid, ?MinorGrid:Grid, ?MajorTickMark:TickMark, ?MinorTickMark:TickMark,
+            //?TitleAlignment, ?TitleFontName, ?TitleFontSize, ?TitleFontStyle, ?TitleColor, ?ToolTip)
+        ) =
 
         // TODO: let titleFont = StyleHelper.OptionalFont(?Name=TitleFontName, ?Size=TitleFontSize, ?Style=TitleFontStyle)
 
         fun (ch : #GenericChart) ->
-            ch |> Helpers.ApplyStyles(?AxisYLogarithmic=Log,?AxisYEnabled=Enabled, ?AxisYLabelFormatter=LabelFormatter,(* TODO: ?AxisYArrowStyle=ArrowStyle,  ?AxisYLabelStyle=LabelStyle, (* ?AxisYIsMarginVisible=IsMarginVisible, *)*) ?AxisYMaximum=Max, ?AxisYMinimum=Min, (* TODO: , ?AxisYMajorGrid=MajorGrid, ?AxisYMinorGrid=MinorGrid, ?AxisYMajorTickMark=MajorTickMark, ?AxisYMinorTickMark=MinorTickMark, *) ?AxisYTitle=Title(* TODO: , ?AxisYTitleAlignment=TitleAlignment, ?AxisYTitleFont=titleFont, ?AxisYTitleForeColor=TitleColor, ?AxisYToolTip=ToolTip *))
+            ch
+            |> Helpers.ApplyStyles
+                (
+                    ?AxisYLogarithmic=Log,
+                    ?AxisYEnabled=Enabled,
+                    ?AxisYLabelFormatter=LabelFormatter,
+                    ?AxisYLabelAngle=LabelAngle,
+                     //TODO: ?AxisYArrowStyle=ArrowStyle,  ?AxisYLabelStyle=LabelStyle, (* ?AxisYIsMarginVisible=IsMarginVisible, *)
+                    ?AxisYMaximum=Max,
+                    ?AxisYMinimum=Min,
+                    (* TODO: , ?AxisYMajorGrid=MajorGrid, ?AxisYMinorGrid=MinorGrid, ?AxisYMajorTickMark=MajorTickMark, ?AxisYMinorTickMark=MinorTickMark, *)
+                    ?AxisYTitle=Title
+                    (* TODO: , ?AxisYTitleAlignment=TitleAlignment, ?AxisYTitleFont=titleFont, ?AxisYTitleForeColor=TitleColor, ?AxisYToolTip=ToolTip *)
+                )
 
     /// <summary>Apply content and styling to the title, if present</summary>
     /// <param name="InsideArea">If false, locates the title outside the chart area</param>
