@@ -13,6 +13,8 @@ open OxyPlot.Series
 open System.Windows
 open System.Windows.Controls
 
+open MathNet.Numerics.Statistics
+
 type PlotView = OxyPlot.Wpf.PlotView
 type FontStyle = float
 
@@ -1203,7 +1205,8 @@ type Chart =
             ?StrokeColor,
             ?StrokeThickness,
             ?OutlierSize,
-            ?XOffset
+            ?XOffset,
+            ?MaxOutliers
         ) =
 
         let boxPlotSeries =
@@ -1222,6 +1225,7 @@ type Chart =
         let showMean          = defaultArg ShowAverage false
         let whiskerPercentile = defaultArg WhiskerPercentile 10
         let percentile        = defaultArg Percentile 25
+        let maxOutliers       = defaultArg MaxOutliers Int32.MaxValue
 
         let data =
             data
@@ -1231,13 +1235,23 @@ type Chart =
 
                         let ys = ys |> Array.sort
 
-                        let lowerWhisker = MathNet.Numerics.Statistics.SortedArrayStatistics.Percentile(ys,       whiskerPercentile)
-                        let boxBottom    = MathNet.Numerics.Statistics.SortedArrayStatistics.Percentile(ys,       percentile)
-                        let median       = if showMedian then MathNet.Numerics.Statistics.SortedArrayStatistics.Median ys else Double.NaN
-                        let boxTop       = MathNet.Numerics.Statistics.SortedArrayStatistics.Percentile(ys, 100 - percentile)
-                        let upperWhisker = MathNet.Numerics.Statistics.SortedArrayStatistics.Percentile(ys, 100 - whiskerPercentile)
+                        let lowerWhisker = SortedArrayStatistics.Percentile(ys,       whiskerPercentile)
+                        let boxBottom    = SortedArrayStatistics.Percentile(ys,       percentile)
+                        let median       = if showMedian then SortedArrayStatistics.Median ys else Double.NaN
+                        let boxTop       = SortedArrayStatistics.Percentile(ys, 100 - percentile)
+                        let upperWhisker = SortedArrayStatistics.Percentile(ys, 100 - whiskerPercentile)
 
-                        let outliers =  if showOutliers then ys |> Array.filter (fun x -> x < lowerWhisker || x > upperWhisker) else [||]
+                        let outliers =
+                            if showOutliers then
+                                let lowerOutliers = ys |> Array.filter (fun x -> x < lowerWhisker)
+                                let upperOutliers = ys |> Array.filter (fun x -> x > upperWhisker)
+
+                                Array.append
+                                    (if lowerOutliers.Length < maxOutliers then lowerOutliers else lowerOutliers              |> Array.take maxOutliers)
+                                    (if upperOutliers.Length < maxOutliers then upperOutliers else upperOutliers |> Array.rev |> Array.take maxOutliers)
+                                |> Array.distinct
+                            else
+                                [||]
 
 
                         let item =
@@ -1280,7 +1294,8 @@ type Chart =
             ?StrokeColor,
             ?StrokeThickness,
             ?OutlierSize,
-            ?XOffset
+            ?XOffset,
+            ?MaxOutliers
         ) =
             let data : (float * float[])[] = data |> Array.ofSeq
 
@@ -1301,7 +1316,8 @@ type Chart =
                     ?StrokeColor       = StrokeColor,
                     ?StrokeThickness   = StrokeThickness,
                     ?OutlierSize       = OutlierSize,
-                    ?XOffset           = XOffset
+                    ?XOffset           = XOffset,
+                    ?MaxOutliers       = MaxOutliers
                 )
 
     static member BoxPlotFromData
@@ -1321,7 +1337,8 @@ type Chart =
             ?StrokeColor,
             ?StrokeThickness,
             ?OutlierSize,
-            ?XOffset
+            ?XOffset,
+            ?MaxOutliers
         ) =
             let data : (float * float[])[] = data |> Array.map (fun (x, ys) -> (float x), (ys |> Array.ofSeq))
 
@@ -1342,7 +1359,8 @@ type Chart =
                     ?StrokeColor       = StrokeColor,
                     ?StrokeThickness   = StrokeThickness,
                     ?OutlierSize       = OutlierSize,
-                    ?XOffset           = XOffset
+                    ?XOffset           = XOffset,
+                    ?MaxOutliers       = MaxOutliers
                 )
 
     static member BoxPlotFromData
@@ -1362,7 +1380,8 @@ type Chart =
             ?StrokeColor,
             ?StrokeThickness,
             ?OutlierSize,
-            ?XOffset
+            ?XOffset,
+            ?MaxOutliers
         ) =
             let data : (float * float[])[] = data |> Seq.map (fun (x, ys) -> (float x), (ys |> Array.ofSeq)) |> Array.ofSeq
 
@@ -1383,7 +1402,8 @@ type Chart =
                     ?StrokeColor       = StrokeColor,
                     ?StrokeThickness   = StrokeThickness,
                     ?OutlierSize       = OutlierSize,
-                    ?XOffset           = XOffset
+                    ?XOffset           = XOffset,
+                    ?MaxOutliers       = MaxOutliers
                 )
 
     static member BoxPlotFromData
@@ -1403,7 +1423,8 @@ type Chart =
             ?StrokeColor,
             ?StrokeThickness,
             ?OutlierSize,
-            ?XOffset
+            ?XOffset,
+            ?MaxOutliers
         ) =
             let data : (float * float[])[] = data |> Seq.map (fun (x, ys) -> (float x), (ys |> Seq.map float |> Array.ofSeq)) |> Array.ofSeq
 
@@ -1424,7 +1445,51 @@ type Chart =
                     ?StrokeColor       = StrokeColor,
                     ?StrokeThickness   = StrokeThickness,
                     ?OutlierSize       = OutlierSize,
-                    ?XOffset           = XOffset
+                    ?XOffset           = XOffset,
+                    ?MaxOutliers       = MaxOutliers
+                )
+
+    static member BoxPlotFromData
+        (
+            data : (int * int[])[],
+            ?Name,
+            ?Title,
+            ?Color,
+            ?XTitle,
+            ?YTitle,
+            ?Percentile,
+            ?ShowAverage,
+            ?ShowMedian,
+            ?ShowUnusualValues,
+            ?WhiskerPercentile,
+            ?BoxWidth,
+            ?StrokeColor,
+            ?StrokeThickness,
+            ?OutlierSize,
+            ?XOffset,
+            ?MaxOutliers
+        ) =
+            let data : (float * float[])[] = data |> Seq.map (fun (x, ys) -> (float x), (ys |> Array.map float)) |> Array.ofSeq
+
+            Chart.BoxPlotFromData
+                (
+                    data,
+                    ?Name              = Name,
+                    ?Title             = Title,
+                    ?Color             = Color,
+                    ?XTitle            = XTitle,
+                    ?YTitle            = YTitle,
+                    ?Percentile        = Percentile,
+                    ?ShowAverage       = ShowAverage,
+                    ?ShowMedian        = ShowMedian,
+                    ?ShowUnusualValues = ShowUnusualValues,
+                    ?WhiskerPercentile = WhiskerPercentile,
+                    ?BoxWidth          = BoxWidth,
+                    ?StrokeColor       = StrokeColor,
+                    ?StrokeThickness   = StrokeThickness,
+                    ?OutlierSize       = OutlierSize,
+                    ?XOffset           = XOffset,
+                    ?MaxOutliers       = MaxOutliers
                 )
 
 #if INCOMPLETE_API

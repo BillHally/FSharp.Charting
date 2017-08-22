@@ -263,10 +263,10 @@ if true then
     let data =
         [|
             for x in 0..1000..65535 do
-                yield (float x, Normal.WithMeanVariance(float x, 100000000.0).Samples().Take(10000) |> Array.ofSeq)
+                yield (x, Normal.WithMeanVariance(float x, 100000000.0).Samples().Take(10000) |> Seq.map int |> Array.ofSeq)
         |]
 
-    Chart.BoxPlotFromData(data, "Blue", Color = OxyColors.AliceBlue, ShowUnusualValues = false, BoxWidth = 65535.0 / ((float data.Length)) * 0.8)
+    Chart.BoxPlotFromData(data, "Blue", Color = OxyColors.AliceBlue, ShowUnusualValues = true, BoxWidth = 65535.0 / ((float data.Length)) * 0.8, WhiskerPercentile = 1, MaxOutliers = 100, ShowAverage = true)
     |> Chart.WithTitle("The results")
     |> Chart.WithXAxis(Title = "Pixel value", LabelAngle = -90.0)
     |> Chart.WithYAxis(Title = "Something",   LabelAngle = +15.7)
