@@ -225,3 +225,30 @@ let createABoxplotFromData () =
 
 createABoxplotFromData ()
 |> Chart.Show (IsMaximized = true)
+
+let createABoxplotFromData' () =
+
+    let blueData =
+        [
+            1.0, Normal.WithMeanVariance(50.0, 20.0).Samples().Take(10000).ToArray()
+            2.5, Normal.WithMeanVariance(75.0, 10.0).Samples().Take(10000).ToArray()
+        ]
+
+    let redData =
+        [
+            1.0, Normal.WithMeanVariance(50.0, 20.0).Samples().Take(10000).ToArray()
+            2.5, Normal.WithMeanVariance(75.0, 10.0).Samples().Take(10000).ToArray()
+        ]
+
+    [
+        Chart.BoxPlotFromData(blueData, "A and B",       Color = OxyColors.AliceBlue,     ShowUnusualValues = true, XOffset = -0.4, BoxWidth = 0.15)
+        Chart.BoxPlotFromData(redData,  "C and D",       Color = OxyColors.Green,         ShowUnusualValues = true, XOffset = -0.2, BoxWidth = 0.15)
+        Chart.BoxPlotFromData(blueData, "A and B (alt)", Color = OxyColors.BlueViolet,    ShowUnusualValues = true, XOffset =  0.2, BoxWidth = 0.15, Percentile=30, WhiskerPercentile = 1)
+        Chart.BoxPlotFromData(redData,  "C and D (alt)", Color = OxyColors.LightSeaGreen, ShowUnusualValues = true, XOffset =  0.4, BoxWidth = 0.15, Percentile=30, WhiskerPercentile = 1)
+    ]
+    |> Chart.Combine
+    |> Chart.WithTitle("The results")
+    |> Chart.WithXAxis(Title = "Experiment No.")
+
+createABoxplotFromData' ()
+|> Chart.Show (IsMaximized = true)
