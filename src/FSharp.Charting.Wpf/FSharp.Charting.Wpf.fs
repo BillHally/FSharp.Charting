@@ -250,7 +250,7 @@ module ChartTypes =
         member __.Value = Value
 
     /// An implementation type for items on a chart. This type should not be used directly.
-    type public ScatterChartItem(X: value, Y: value, Size: value, Tag: obj) =
+    type public ScatterChartItem(X: value, Y : value, Size: value, Tag: obj) =
         member __.X = X
         member __.Y = Y
         member __.Size = Size
@@ -808,6 +808,7 @@ module ChartTypes =
                 primaryChart
 
 open ChartTypes
+open OxyPlot.Axes
 
 type internal Helpers() =
 
@@ -1829,7 +1830,7 @@ type Chart =
     /// <param name="Color">The color for the data.</param>
     /// <param name="XTitle">The title of the X-axis.</param>
     /// <param name="YTitle">The title of the Y-axis.</param>
-    static member Point(data:seq<#value*#value>,?Name,?Title,?Labels,?Color,?XTitle,?YTitle,?MarkerSize,?MarkerType) =
+    static member Point(data:seq<#value * #value>,?Name,?Title,?Labels,?Color,?XTitle,?YTitle,?MarkerSize,?MarkerType) =
         let defaultValue = ScatterSeries()
 
         GenericChart.Create
@@ -1843,17 +1844,54 @@ type Chart =
                             ScatterChartItem(x, y, Size=(defaultArg MarkerSize 3.0), Tag=allowNull lab)
                     ),
 
-                    ScatterSeries
-                        (
-                            DataFieldX="X",
-                            DataFieldY="Y",
-                            DataFieldSize="Size",
-                            DataFieldTag="Tag",
-                            MarkerType=(defaultArg MarkerType defaultValue.MarkerType),
-                            MarkerStroke=defaultArg Color defaultValue.MarkerStroke,
-                            TrackerFormatString=if Option.isSome Labels then "{Tag:0}" else defaultValue.TrackerFormatString
-                        )
+                ScatterSeries
+                    (
+                        DataFieldX="X",
+                        DataFieldY="Y",
+                        DataFieldSize="Size",
+                        DataFieldTag="Tag",
+                        MarkerType=(defaultArg MarkerType defaultValue.MarkerType),
+                        MarkerStroke=defaultArg Color defaultValue.MarkerStroke,
+                        TrackerFormatString=if Option.isSome Labels then "{Tag:0}" else defaultValue.TrackerFormatString
+                    )
             )
+            |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
+
+    /// <summary>Uses points to represent data points.</summary>
+    /// <param name="data">The data for the chart.</param>
+    /// <param name="Name">The name of the data set.</param>
+    /// <param name="Title">The title of the chart.</param>
+    /// <param name="Labels">The labels that match the data.</param>
+    /// <param name="Color">The color for the data.</param>
+    /// <param name="XTitle">The title of the X-axis.</param>
+    /// <param name="YTitle">The title of the Y-axis.</param>
+    static member Point(data:seq<DateTime * TimeSpan>,?Name,?Title,?Labels,?Color,?XTitle,?YTitle,?MarkerSize,?MarkerType) =
+        let defaultValue = ScatterSeries()
+
+        GenericChart.Create
+            (
+                data
+                |> listen
+                |> mergeLabels Labels
+                |> makeItems
+                    (
+                        fun ((x, y), lab) ->
+                            ScatterChartItem(OxyPlot.Axes.DateTimeAxis.ToDouble(x), OxyPlot.Axes.DateTimeAxis.ToDouble(y), Size=(defaultArg MarkerSize 3.0), Tag=allowNull lab)
+                    ),
+
+                ScatterSeries
+                    (
+                        DataFieldX="X",
+                        DataFieldY="Y",
+                        DataFieldSize="Size",
+                        DataFieldTag="Tag",
+                        MarkerType=(defaultArg MarkerType defaultValue.MarkerType),
+                        MarkerStroke=defaultArg Color defaultValue.MarkerStroke,
+                        TrackerFormatString=if Option.isSome Labels then "{Tag:0}" else defaultValue.TrackerFormatString
+                    )
+            )
+            |> (fun x -> x.Model.Axes.Add(OxyPlot.Axes.DateTimeAxis(Position = AxisPosition.Bottom, IntervalType = DateTimeIntervalType.Months)); x)
+            |> (fun x -> x.Model.Axes.Add(OxyPlot.Axes.TimeSpanAxis(Position = AxisPosition.Left                                              )); x)
             |> Helpers.ApplyStyles(?Name=Name,?Title=Title,?Color=Color,?AxisXTitle=XTitle,?AxisYTitle=YTitle)
 
     /// <summary>Uses points to represent data points.</summary>
