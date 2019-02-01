@@ -9,7 +9,8 @@ open FSharp.Control.Reactive
 open FSharp.Charting
 open FSharp.Charting.ChartTypes
 
-open FSharp.ViewModule
+open ViewModule
+open ViewModule.FSharp
 
 open WpfControls
 open OxyPlot

@@ -18,7 +18,7 @@ type Window = XAML<"MainWindow.xaml">
 type Chart =
     static member Explore (?IsMaximized : bool) =
         fun (plots : #seq<ChartTypes.GenericChart>) ->
-            let window = Window().Root
+            let window = Window()
             let viewModel = ChartExplorerViewModel plots
             window.DataContext <- viewModel
             window.ShowDialog() |> ignore

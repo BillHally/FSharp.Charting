@@ -2,4 +2,4 @@
 
 open FsXaml
 
-type ChartExplorer = XAML<"Views/ChartExplorer.xaml", true>
+type ChartExplorer = XAML<"Views/ChartExplorer.xaml">

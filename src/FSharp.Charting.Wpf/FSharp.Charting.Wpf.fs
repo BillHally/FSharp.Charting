@@ -1771,7 +1771,7 @@ type Chart =
     /// <param name="Color">The color for the data.</param>
     /// <param name="XTitle">The title of the X-axis.</param>
     /// <param name="YTitle">The title of the Y-axis.</param>
-    static member Line(data:seq<('key :> key) * #value>,?Name,?Title,?Color,?XTitle,?YTitle,?Thickness,?LineStyle,?Smooth) =
+    static member Line(data:seq<('key :> key) * #value>,?Name,?Title,?Color,?XTitle,?YTitle,?Thickness,?LineStyle,?InterpolationAlgorithm) =
         GenericChart.Create
             (
                 data |> listen |> makeItems (fun (x,y) -> LineChartItem(x,y)),
@@ -1781,7 +1781,7 @@ type Chart =
                         DataFieldY = "Y",
                         StrokeThickness = defaultArg Thickness (LineSeries().StrokeThickness),
                         LineStyle = defaultArg LineStyle (LineSeries().LineStyle),
-                        Smooth = defaultArg Smooth (LineSeries().Smooth)
+                        InterpolationAlgorithm = defaultArg InterpolationAlgorithm (InterpolationAlgorithms.CanonicalSpline)
                     )
             )
         |> Helpers.ApplyStaticAxis(typeof<'key>, Axes.AxisPosition.Bottom)
@@ -1795,8 +1795,8 @@ type Chart =
     /// <param name="Color">The color for the data.</param>
     /// <param name="XTitle">The title of the X-axis.</param>
     /// <param name="YTitle">The title of the Y-axis.</param>
-    static member Line(data:seq<#value>,?Name,?Title,?Color,?XTitle,?YTitle,?Thickness,?LineStyle,?Smooth) =
-        Chart.Line(indexData data,?Name=Name,?Title=Title,?Color=Color,?XTitle=XTitle,?YTitle=YTitle,?Thickness=Thickness,?LineStyle=LineStyle,?Smooth=Smooth)
+    static member Line(data:seq<#value>,?Name,?Title,?Color,?XTitle,?YTitle,?Thickness,?LineStyle,?InterpolationAlgorithm) =
+        Chart.Line(indexData data,?Name=Name,?Title=Title,?Color=Color,?XTitle=XTitle,?YTitle=YTitle,?Thickness=Thickness,?LineStyle=LineStyle,?InterpolationAlgorithm=InterpolationAlgorithm)
 
 
     /// <summary>Shows how proportions of data, shown as pie-shaped pieces, contribute to the data as a whole.</summary>
